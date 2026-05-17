@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
-import { ExternalLink, RefreshCw, Search, Sparkles, Video } from '../ui/Icons'
+import { ExternalLink, Search, Sparkles, Video } from '../ui/Icons'
 import { buildYouTubeEmbedUrl, youtubeEmbedModes, YouTubeEmbedMode } from '../../utils/youtube'
 
 interface FeedArticle {
@@ -78,15 +78,13 @@ const trendSearches = [
 export function NewsFeed() {
   const [articles, setArticles] = useState<FeedArticle[]>([])
   const [videos, setVideos] = useState<FeedVideo[]>([])
-  const [loading, setLoading] = useState(true)
-  const [seed, setSeed] = useState(() => Date.now())
+  const [seed] = useState(() => Date.now())
   const [activeSearch, setActiveSearch] = useState(trendSearches[0])
   const [embedMode, setEmbedMode] = useState<YouTubeEmbedMode>('standard')
 
   useEffect(() => {
     let cancelled = false
     async function load() {
-      setLoading(true)
       const [nextArticles, nextVideos] = await Promise.all([
         loadArticles(),
         loadVideos(),
@@ -94,7 +92,6 @@ export function NewsFeed() {
       if (cancelled) return
       setArticles(nextArticles.length ? nextArticles : fallbackArticles)
       setVideos(nextVideos.length ? nextVideos : fallbackVideos)
-      setLoading(false)
     }
     load()
     return () => { cancelled = true }
@@ -107,10 +104,6 @@ export function NewsFeed() {
   const featuredVideo = videos[0] || fallbackVideos[0]
   const otherVideos = videos.slice(1, 7)
 
-  function refresh() {
-    setSeed(Date.now())
-  }
-
   return (
     <main className="feed-page">
       <section className="feed-hero">
@@ -122,10 +115,6 @@ export function NewsFeed() {
           <h1>News, updates, and videos in one place</h1>
           <p>Official posts are shuffled into a fresh dashboard, with Genshin video drops and fast YouTube searches for what people are watching now.</p>
         </div>
-        <button className="feed-refresh" onClick={refresh} type="button">
-          <RefreshCw size={15} />
-          {loading ? 'Refreshing' : 'Refresh'}
-        </button>
       </section>
 
       <section className="feed-layout">

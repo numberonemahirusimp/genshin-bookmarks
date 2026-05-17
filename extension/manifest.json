@@ -1,0 +1,91 @@
+{
+  "manifest_version": 3,
+  "name": "Teyvat Archive — Bookmark Manager",
+  "short_name": "Teyvat Archive",
+  "version": "1.0.0",
+  "description": "A premium bookmark manager inspired by Genshin Impact's UI. Navigate the web like exploring Teyvat.",
+  "author": "Teyvat Archive Team",
+  "permissions": [
+    "bookmarks",
+    "storage",
+    "tabs",
+    "contextMenus",
+    "favicon",
+    "history",
+    "cookies",
+    "declarativeNetRequestWithHostAccess"
+  ],
+  "host_permissions": [
+    "https://*.youtube.com/*",
+    "https://*.youtube-nocookie.com/*",
+    "https://*.googlevideo.com/*",
+    "https://*.ytimg.com/*",
+    "https://*.youtubei.googleapis.com/*",
+    "https://genshin-feed.com/*",
+    "https://*.hoyolab.com/*",
+    "https://*.hoyoverse.com/*"
+  ],
+  "declarative_net_request": {
+    "rule_resources": [
+      {
+        "id": "youtube_embed_headers",
+        "enabled": true,
+        "path": "rules/youtube_embed_headers.json"
+      }
+    ]
+  },
+    "content_security_policy": {
+      "extension_pages": "script-src 'self'; object-src 'self'; frame-src https://www.youtube.com https://www.youtube-nocookie.com; img-src 'self' data: https:; connect-src 'self' https://genshin-feed.com https://www.youtube.com https://www.youtube-nocookie.com https://*.youtubei.googleapis.com https://*.googlevideo.com https://*.ytimg.com https://*.hoyoverse.com https://*.hoyolab.com;"
+    },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Teyvat Archive",
+    "default_icon": {
+      "16": "icons/icon.svg",
+      "48": "icons/icon.svg",
+      "128": "icons/icon.svg"
+    }
+  },
+  "chrome_url_overrides": {
+    "newtab": "index.html"
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "icons": {
+    "16": "icons/icon.svg",
+    "48": "icons/icon.svg",
+    "128": "icons/icon.svg"
+  },
+  "commands": {
+    "_execute_action": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+S",
+        "mac": "Command+Shift+S"
+      },
+      "description": "Open Teyvat Archive"
+    },
+    "save-bookmark": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+B",
+        "mac": "Command+Shift+B"
+      },
+      "description": "Quick save current page as bookmark"
+    },
+    "open-archive": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+A",
+        "mac": "Command+Shift+A"
+      },
+      "description": "Open Teyvat Archive Dashboard"
+    }
+  }
+}

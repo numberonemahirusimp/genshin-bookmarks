@@ -1,0 +1,56 @@
+[
+  {
+    "id": 1001,
+    "priority": 1,
+    "action": {
+      "type": "modifyHeaders",
+      "requestHeaders": [
+        {
+          "header": "Referer",
+          "operation": "set",
+          "value": "https://genshin.hoyoverse.com/"
+        }
+      ]
+    },
+    "condition": {
+      "regexFilter": "^https://www\\.youtube(?:-nocookie)?\\.com/embed/",
+      "resourceTypes": ["sub_frame"]
+    }
+  },
+  {
+    "id": 1002,
+    "priority": 1,
+    "action": {
+      "type": "modifyHeaders",
+      "requestHeaders": [
+        {
+          "header": "Referer",
+          "operation": "set",
+          "value": "https://genshin.hoyoverse.com/"
+        }
+      ]
+    },
+    "condition": {
+      "urlFilter": "||youtube.com/youtubei/",
+      "resourceTypes": ["xmlhttprequest"]
+    }
+  },
+  {
+    "id": 1003,
+    "priority": 1,
+    "action": {
+      "type": "modifyHeaders",
+      "requestHeaders": [
+        {
+          "header": "Referer",
+          "operation": "set",
+          "value": "https://genshin.hoyoverse.com/"
+        }
+      ]
+    },
+    "condition": {
+      "urlFilter": "||youtubei.googleapis.com/",
+      "resourceTypes": ["xmlhttprequest"]
+    }
+  }
+]

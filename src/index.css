@@ -631,7 +631,6 @@
     line-height: 1.55;
   }
 
-  .feed-refresh,
   .trend-open {
     display: inline-flex;
     align-items: center;
@@ -649,7 +648,6 @@
     transition: transform 160ms ease, border-color 160ms ease;
   }
 
-  .feed-refresh:hover,
   .trend-open:hover {
     border-color: var(--color-gold-light);
     transform: translateY(-1px);
