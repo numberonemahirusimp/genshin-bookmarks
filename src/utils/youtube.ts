@@ -6,6 +6,8 @@ export const youtubeEmbedModes: { id: YouTubeEmbedMode; label: string }[] = [
   { id: 'plain', label: 'Plain' },
 ]
 
+const extensionEmbedOrigin = 'https://genshin.hoyoverse.com'
+
 export function extractYouTubeVideoId(input: string): string | null {
   const value = input.trim()
 
@@ -58,6 +60,8 @@ export function buildYouTubeEmbedUrl(
   const params = new URLSearchParams(query)
   params.set('rel', '0')
   params.set('playsinline', '1')
+  params.set('origin', getEmbedOrigin())
+  params.set('widget_referrer', `${getEmbedOrigin()}/`)
 
   const host =
     mode === 'privacy'
@@ -65,4 +69,13 @@ export function buildYouTubeEmbedUrl(
       : 'https://www.youtube.com'
 
   return `${host}/embed/${id}?${params.toString()}`
+}
+
+function getEmbedOrigin(): string {
+  if (typeof window === 'undefined') return extensionEmbedOrigin
+  if (window.location.protocol === 'chrome-extension:') return extensionEmbedOrigin
+  if (window.location.protocol === 'http:' || window.location.protocol === 'https:') {
+    return window.location.origin
+  }
+  return extensionEmbedOrigin
 }

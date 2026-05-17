@@ -25,6 +25,15 @@
     "https://*.hoyolab.com/*",
     "https://*.hoyoverse.com/*"
   ],
+  "declarative_net_request": {
+    "rule_resources": [
+      {
+        "id": "youtube_embed_headers",
+        "enabled": true,
+        "path": "rules/youtube_embed_headers.json"
+      }
+    ]
+  },
     "content_security_policy": {
       "extension_pages": "script-src 'self'; object-src 'self'; frame-src https://www.youtube.com https://www.youtube-nocookie.com; img-src 'self' data: https:; connect-src 'self' https://genshin-feed.com https://www.youtube.com https://www.youtube-nocookie.com https://*.youtubei.googleapis.com https://*.googlevideo.com https://*.ytimg.com https://*.hoyoverse.com https://*.hoyolab.com;"
     },
