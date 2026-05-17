@@ -1,0 +1,35 @@
+{
+  "name": "genshin-bookmarks",
+  "displayName": "Teyvat Archive — Bookmark Manager",
+  "version": "1.0.0",
+  "description": "A premium bookmark manager inspired by Genshin Impact's UI language. Feels like an RPG inventory archive.",
+  "author": "Teyvat Archive Team",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "lint": "tsc --noEmit"
+  },
+  "dependencies": {
+    "framer-motion": "^10.18.0",
+    "fuse.js": "^7.0.0",
+    "idb": "^8.0.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "spark-md5": "^3.0.2"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.260",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "@types/spark-md5": "^3.0.5",
+    "@vitejs/plugin-react": "^4.2.0",
+    "autoprefixer": "^10.4.0",
+    "postcss": "^8.4.0",
+    "tailwindcss": "^3.4.0",
+    "typescript": "^5.3.0",
+    "vite": "^5.1.0"
+  }
+}
