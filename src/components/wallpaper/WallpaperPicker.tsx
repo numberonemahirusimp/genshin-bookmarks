@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
-import { motion } from 'framer-motion'
 import { X, Check, Plus, Trash2 as Trash } from '../ui/Icons'
 import { WallpaperEntry, WallpaperState } from '../../types'
 import { wallpaperUrl } from '../../data/wallpapers'
@@ -42,11 +41,11 @@ export function WallpaperPicker({
 }: WallpaperPickerProps) {
   const [search, setSearch] = useState('')
   const [hidden, setHidden] = useState<Set<string>>(loadHidden)
-  const [ready, setReady] = useState(false)
+  const [renderCount, setRenderCount] = useState(8)
+  const [closing, setClosing] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
-
-  useEffect(() => { const t = setTimeout(() => setReady(true), 300); return () => clearTimeout(t) }, [])
+  const scrollRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     inputRef.current?.focus()
@@ -67,6 +66,35 @@ export function WallpaperPicker({
   }, [wallpapers, search, hidden])
 
   const hiddenCount = wallpapers.length - visible.length
+
+  // Scroll to active wallpaper
+  useEffect(() => {
+    if (active && scrollRef.current) {
+      const el = scrollRef.current.querySelector(`[data-wp="${active}"]`)
+      el?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+    }
+  }, [active])
+
+  // Stagger rendering: show 4 more items per animation frame
+  useEffect(() => {
+    setRenderCount(8)
+    let raf: number
+    let scheduled = false
+    const schedule = () => {
+      if (scheduled) return
+      scheduled = true
+      raf = requestAnimationFrame(() => {
+        scheduled = false
+        setRenderCount(prev => {
+          if (prev >= visible.length) return prev
+          return Math.min(prev + 4, visible.length)
+        })
+        if (renderCount < visible.length) schedule()
+      })
+    }
+    schedule()
+    return () => cancelAnimationFrame(raf)
+  }, [visible.length])
 
   const handleFile = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -96,140 +124,99 @@ export function WallpaperPicker({
     setHidden(new Set())
   }, [])
 
+  const handleClose = useCallback(() => {
+    setClosing(true)
+    setTimeout(onClose, 150)
+  }, [onClose])
+
+  const rendered = visible.slice(0, renderCount)
+  const hasMore = renderCount < visible.length
+
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4"
-      style={{ backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)' }}
+      className={`wp-overlay${closing ? ' wp-overlay-closing' : ''}`}
+      onClick={handleClose}
     >
-      <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.55)' }} onClick={onClose} />
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.15 }}
-        className="relative flex flex-col w-full max-w-[720px] max-h-[min(92dvh,760px)] overflow-hidden"
-        style={{
-          background: 'var(--wallpaper-panel-bg)',
-          backdropFilter: 'blur(30px)',
-          WebkitBackdropFilter: 'blur(30px)',
-          border: '1px solid var(--color-border)',
-          borderRadius: 12,
-          boxShadow: '0 25px 80px rgba(0,0,0,0.6)',
-        }}
+      <div
+        className={`wp-panel${closing ? ' wp-panel-closing' : ''}`}
+        onClick={e => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between gap-3 px-4 pt-4 pb-2 sm:px-5">
-          <span style={{ fontFamily: 'Cormorant Garamond, serif', fontSize: 18, color: 'var(--color-text)' }}>
-            Wallpaper Gallery
-          </span>
-          <div className="flex min-w-0 items-center gap-2">
+        <div className="wp-header">
+          <span className="wp-title">Wallpaper Gallery</span>
+          <div className="wp-header-actions">
             {mode === 'image' && active && (
-              <button onClick={() => onSetActive(null)}
-                style={{
-                  fontSize: 10, padding: '5px 9px', borderRadius: 8, cursor: 'pointer',
-                  background: 'rgba(255,255,255,0.08)', border: '1px solid var(--color-border)',
-                  color: 'var(--color-text)',
-                }}>
+              <button className="wp-btn wp-btn-sm" onClick={() => onSetActive(null)}>
                 Remove
               </button>
             )}
             {hiddenCount > 0 && (
-              <button onClick={bulkUnhide}
-                style={{
-                  fontSize: 10, padding: '5px 9px', borderRadius: 8, cursor: 'pointer',
-                  background: 'var(--wallpaper-control-active)', border: '1px solid var(--color-border)',
-                  color: 'var(--color-gold-light)',
-                }}>
+              <button className="wp-btn wp-btn-sm wp-btn-gold" onClick={bulkUnhide}>
                 Restore {hiddenCount}
               </button>
             )}
-            <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-secondary)', padding: 4 }}>
+            <button className="wp-close-btn" onClick={handleClose}>
               <X size={16} />
             </button>
           </div>
         </div>
 
         {/* Search */}
-        <div className="px-4 pb-2 sm:px-5">
+        <div className="wp-search">
           <input
             ref={inputRef}
             type="text"
             placeholder="Search wallpapers…"
             value={search}
             onChange={e => setSearch(e.target.value)}
-            style={{
-              width: '100%', padding: '8px 12px', borderRadius: 10,
-              background: 'rgba(255,255,255,0.08)', border: '1px solid var(--color-border)',
-              color: 'var(--color-text)', fontSize: 12, outline: 'none',
-            }}
+            className="wp-search-input"
           />
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto px-4 pb-3 sm:px-5 space-y-2">
-          {!ready ? (
-            <div style={{ textAlign: 'center', padding: '40px 0', color: 'rgba(255,255,255,0.15)', fontSize: 11 }}>
-              Loading…
-            </div>
-          ) : (<>
+        <div className="wp-content" ref={scrollRef}>
+          {visible.length === 0 && wallpapers.length === 0 && (
+            <div className="wp-empty">No wallpapers downloaded yet.</div>
+          )}
+
+          {visible.length === 0 && wallpapers.length > 0 && (
+            <div className="wp-empty">No wallpapers match your search.</div>
+          )}
+
           {/* Wallpaper grid */}
-          {visible.length > 0 && (
+          {rendered.length > 0 && (
             <div className="wallpaper-grid">
-              {visible.map((wp) => {
+              {rendered.map((wp) => {
                 const isActive = mode === 'image' && active === wp.path
                 const url = wallpaperUrl(wp.path)
                 return (
-                  <div key={wp.path} style={{ position: 'relative', contentVisibility: 'auto', containIntrinsicSize: '150px' }}>
+                  <div key={wp.path} className="wp-thumb-wrap" data-wp={wp.path}>
                     <button
+                      className={`wp-thumb${isActive ? ' wp-thumb-active' : ''}`}
                       onClick={() => onSetActive(wp.path)}
-                      style={{
-                        width: '100%', cursor: 'pointer', borderRadius: 10, overflow: 'hidden',
-                        aspectRatio: '16/9', padding: 0,
-                        background: 'rgba(255,255,255,0.04)',
-                        border: isActive ? '2px solid var(--color-gold-light)' : '2px solid transparent',
-                        transition: 'border-color 0.15s',
-                      }}
-                      onMouseEnter={e => { if (!isActive) e.currentTarget.style.borderColor = 'var(--color-border)' }}
-                      onMouseLeave={e => { if (!isActive) e.currentTarget.style.borderColor = 'transparent' }}
                     >
                       <img
                         src={url}
                         alt=""
                         loading="lazy"
                         decoding="async"
-                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        fetchPriority="low"
+                        className="wp-thumb-img"
                         onError={e => { (e.target as HTMLImageElement).style.display = 'none' }}
                       />
                       {isActive && (
-                        <div style={{
-                          position: 'absolute', top: 4, right: 26,
-                          background: 'var(--color-gold-light)', borderRadius: '50%',
-                          width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        }}>
-                          <Check size={10} style={{ color: '#120c0a' }} />
+                        <div className="wp-check">
+                          <Check size={10} />
                         </div>
                       )}
-                      <div style={{
-                        position: 'absolute', bottom: 0, left: 0, right: 0,
-                        padding: '3px 5px', fontSize: 8, color: 'rgba(255,255,255,0.7)',
-                        background: 'linear-gradient(transparent, rgba(0,0,0,0.7))',
-                        textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap',
-                      }}>
+                      <div className="wp-label">
                         {wp.path.split('/').pop()?.replace(/\.[^.]+$/, '').replace(/_/g, ' ') || wp.path}
                       </div>
                     </button>
-                    {/* Hide button */}
                     <button
-                      onClick={() => toggleHide(wp.path)}
+                      className="wp-hide-btn"
                       title="Remove from gallery"
-                      style={{
-                        position: 'absolute', top: 4, left: 4, width: 18, height: 18,
-                        borderRadius: '50%', border: 'none', cursor: 'pointer',
-                        background: 'rgba(0,0,0,0.45)', color: 'rgba(255,255,255,0.5)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: 9, zIndex: 2,
-                      }}
-                      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(200,80,80,0.7)'; e.currentTarget.style.color = 'white' }}
-                      onMouseLeave={e => { e.currentTarget.style.background = 'rgba(0,0,0,0.45)'; e.currentTarget.style.color = 'rgba(255,255,255,0.5)' }}
+                      onClick={() => toggleHide(wp.path)}
                     >
                       <Trash size={9} />
                     </button>
@@ -239,53 +226,33 @@ export function WallpaperPicker({
             </div>
           )}
 
-          {wallpapers.length === 0 && (
-            <div style={{ textAlign: 'center', padding: '24px 0', color: 'rgba(255,255,255,0.25)', fontSize: 11 }}>
-              No wallpapers downloaded yet.
-            </div>
-          )}
+          {/* Load more sentinel */}
+          {hasMore && <div className="wp-load-more" />}
 
           {/* Custom wallpapers */}
           {customWallpapers.length > 0 && (
-            <div style={{ paddingTop: 8 }}>
-              <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', marginBottom: 6 }}>Uploaded</div>
+            <div className="wp-custom-section">
+              <div className="wp-custom-label">Uploaded</div>
               <div className="wallpaper-grid">
                 {customWallpapers.map((cw, i) => {
                   const isActive = mode === 'image' && active === cw.data
                   return (
-                    <div key={i} style={{ position: 'relative', contentVisibility: 'auto', containIntrinsicSize: '150px' }}>
+                    <div key={i} className="wp-thumb-wrap">
                       <button
+                        className={`wp-thumb${isActive ? ' wp-thumb-active' : ''}`}
                         onClick={() => onSetActive(cw.data)}
-                        style={{
-                          width: '100%', cursor: 'pointer', borderRadius: 10, overflow: 'hidden',
-                          aspectRatio: '16/9', padding: 0,
-                          background: 'rgba(255,255,255,0.04)',
-                          border: isActive ? '2px solid var(--color-gold-light)' : '2px solid transparent',
-                        }}
                       >
-                        <img src={cw.data} alt="" loading="lazy" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        <img src={cw.data} alt="" loading="lazy" decoding="async" fetchPriority="low" className="wp-thumb-img" />
                         {isActive && (
-                          <div style={{
-                            position: 'absolute', top: 4, right: 26,
-                            background: 'var(--color-gold-light)', borderRadius: '50%',
-                            width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          }}>
-                            <Check size={10} style={{ color: '#120c0a' }} />
+                          <div className="wp-check">
+                            <Check size={10} />
                           </div>
                         )}
                       </button>
                       <button
-                        onClick={() => { onDeleteCustom(i); if (active === cw.data) onSetActive(null) }}
+                        className="wp-hide-btn"
                         title="Delete uploaded"
-                        style={{
-                          position: 'absolute', top: 4, left: 4, width: 18, height: 18,
-                          borderRadius: '50%', border: 'none', cursor: 'pointer',
-                          background: 'rgba(0,0,0,0.45)', color: 'rgba(255,255,255,0.5)',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          fontSize: 9, zIndex: 2,
-                        }}
-                        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(200,80,80,0.7)'; e.currentTarget.style.color = 'white' }}
-                        onMouseLeave={e => { e.currentTarget.style.background = 'rgba(0,0,0,0.45)'; e.currentTarget.style.color = 'rgba(255,255,255,0.5)' }}
+                        onClick={() => { onDeleteCustom(i); if (active === cw.data) onSetActive(null) }}
                       >
                         <Trash size={9} />
                       </button>
@@ -298,50 +265,36 @@ export function WallpaperPicker({
 
           {/* Upload button */}
           <button
+            className="wp-upload-btn"
             onClick={() => fileRef.current?.click()}
-            className="flex items-center justify-center gap-2 w-full"
-            style={{
-              padding: '10px', borderRadius: 12, cursor: 'pointer',
-              background: 'rgba(255,255,255,0.04)', border: '1px dashed rgba(255,255,255,0.12)',
-              color: 'rgba(255,255,255,0.35)', fontSize: 11, transition: 'all 0.15s',
-            }}
-            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.07)'; e.currentTarget.style.color = 'rgba(255,255,255,0.5)' }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; e.currentTarget.style.color = 'rgba(255,255,255,0.35)' }}
           >
             <Plus size={12} />
             Upload Wallpaper
           </button>
-          <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFile} />
-          </>)}
+          <input ref={fileRef} type="file" accept="image/*" className="wp-file-input" onChange={handleFile} />
         </div>
 
         {/* Bottom: opacity slider */}
         {mode === 'image' && (
-          <div className="flex flex-wrap items-center gap-3 px-4 pb-4 pt-2 sm:px-5">
-            <span style={{ fontSize: 10, color: 'var(--color-text-secondary)', whiteSpace: 'nowrap' }}>Wallpaper</span>
+          <div className="wp-footer">
+            <span className="wp-footer-label">Wallpaper</span>
             <input
               type="range" min="0.05" max="0.8" step="0.05" value={opacity}
               onChange={e => onSetOpacity(parseFloat(e.target.value))}
-              style={{
-                flex: '1 1 160px', height: 3, accentColor: 'var(--color-gold)', cursor: 'pointer',
-              }}
+              className="wp-slider"
             />
-            <span style={{ fontSize: 10, color: 'var(--color-text-secondary)', width: 28, textAlign: 'right' }}>
+            <span className="wp-footer-pct">
               {Math.round(opacity * 100)}%
             </span>
             <button
+              className="wp-btn wp-btn-sm"
               onClick={() => onSetActive(null)}
-              style={{
-                padding: '7px 10px', borderRadius: 8, cursor: 'pointer',
-                background: 'rgba(255,255,255,0.08)', border: '1px solid var(--color-border)',
-                color: 'var(--color-text)', fontSize: 11,
-              }}
             >
               Remove Wallpaper
             </button>
           </div>
         )}
-      </motion.div>
+      </div>
     </div>
   )
 }
