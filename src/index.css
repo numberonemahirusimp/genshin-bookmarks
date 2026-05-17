@@ -1038,3 +1038,101 @@
     grid-template-columns: 1fr;
   }
 }
+
+.mouse-sparkles-star,
+.mouse-sparkles-glow-point {
+  position: fixed;
+  pointer-events: none;
+  z-index: 9999;
+  transform: translate(-50%, -50%);
+  will-change: transform, opacity;
+}
+
+.mouse-sparkles-star {
+  width: 1em;
+  height: 1em;
+  opacity: 0;
+  animation-timing-function: cubic-bezier(0.17, 0.67, 0.28, 1);
+  animation-fill-mode: forwards;
+}
+
+.mouse-sparkles-glow-point {
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(229, 194, 137, 0.45), rgba(127, 209, 255, 0));
+  animation: mouse-glow 75ms ease-out forwards;
+  mix-blend-mode: screen;
+}
+
+@keyframes fall-1 {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.42) rotate(0deg); }
+  14% { opacity: 1; }
+  100% { opacity: 0; transform: translate(calc(-50% - 18px), calc(-50% + 42px)) scale(0.12) rotate(90deg); }
+}
+
+@keyframes fall-2 {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5) rotate(0deg); }
+  16% { opacity: 0.95; }
+  100% { opacity: 0; transform: translate(calc(-50% + 14px), calc(-50% + 38px)) scale(0.14) rotate(-120deg); }
+}
+
+@keyframes fall-3 {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.45) rotate(0deg); }
+  18% { opacity: 0.9; }
+  100% { opacity: 0; transform: translate(calc(-50% + 5px), calc(-50% + 50px)) scale(0.1) rotate(140deg); }
+}
+
+@keyframes mouse-glow {
+  from { opacity: 0.48; transform: translate(-50%, -50%) scale(1); }
+  to { opacity: 0; transform: translate(-50%, -50%) scale(2.5); }
+}
+
+.archive-card,
+.video-preview,
+.youtube-card,
+.youtube-mode-row button,
+.trend-searches button,
+.trend-open,
+.feed-mini,
+.story-card {
+  transition:
+    transform 180ms ease,
+    border-color 180ms ease,
+    background-color 180ms ease,
+    box-shadow 220ms ease,
+    opacity 180ms ease;
+}
+
+.video-preview:hover,
+.youtube-card:hover,
+.feed-mini:hover,
+.story-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 18px 46px rgba(0, 0, 0, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.youtube-mode-row button:hover,
+.trend-searches button:hover,
+.trend-open:hover {
+  transform: translateY(-1px);
+  border-color: rgba(229, 194, 137, 0.38);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mouse-sparkles-star,
+  .mouse-sparkles-glow-point {
+    display: none;
+  }
+
+  .archive-card,
+  .video-preview,
+  .youtube-card,
+  .youtube-mode-row button,
+  .trend-searches button,
+  .trend-open,
+  .feed-mini,
+  .story-card {
+    transition: none;
+  }
+}

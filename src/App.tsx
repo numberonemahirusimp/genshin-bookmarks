@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react'
 import { MainLayout } from './components/layout/MainLayout'
 import { LoadingScreen } from './components/ui/LoadingScreen'
+import { MouseSparkles } from './components/ui/MouseSparkles'
 import { ParticleBackground } from './components/ui/ParticleBackground'
 import { useBookmarks } from './hooks/useBookmarks'
 import { useTheme } from './hooks/useTheme'
@@ -59,6 +60,7 @@ export default function App() {
   return (
     <div className="relative">
       <ParticleBackground />
+      <MouseSparkles />
       <MainLayout
         bookmarks={bookmarks}
         folders={folders}
