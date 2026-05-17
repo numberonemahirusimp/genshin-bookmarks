@@ -12,7 +12,8 @@
     "contextMenus",
     "favicon",
     "history",
-    "cookies"
+    "cookies",
+    "declarativeNetRequestWithHostAccess"
   ],
   "host_permissions": [
     "https://*.youtube.com/*",

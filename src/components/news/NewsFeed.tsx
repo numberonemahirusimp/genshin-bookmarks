@@ -58,11 +58,11 @@ const fallbackArticles: FeedArticle[] = [
 
 const fallbackVideos: FeedVideo[] = [
   {
-    id: 'official-channel',
-    title: 'Open Official Genshin Impact Videos',
-    link: 'https://www.youtube.com/@GenshinImpact',
-    date: new Date().toISOString(),
-    thumbnail: '',
+    id: 'oIFafp10VLU',
+    title: 'What am I now, you ask? Just a "human" who has lost her voice.',
+    link: 'https://www.youtube.com/shorts/oIFafp10VLU',
+    date: '2026-05-17T10:01:13+00:00',
+    thumbnail: 'https://i4.ytimg.com/vi/oIFafp10VLU/hqdefault.jpg',
     channel: 'Genshin Impact',
   },
 ]
@@ -291,7 +291,7 @@ async function loadVideos(): Promise<FeedVideo[]> {
   if (!xml) return []
   const doc = new DOMParser().parseFromString(xml, 'application/xml')
   return [...doc.querySelectorAll('entry')].slice(0, 8).map(entry => {
-    const id = text(entry, 'videoId') || text(entry, 'yt\\:videoId')
+    const id = xmlText(entry, 'videoId')
     return {
       id,
       title: text(entry, 'title') || 'Genshin Impact video',
@@ -325,6 +325,13 @@ function parseRssItems(xml: string): Omit<FeedArticle, 'id' | 'category'>[] {
 
 function text(parent: Element, selector: string): string {
   return parent.querySelector(selector)?.textContent?.trim() || ''
+}
+
+function xmlText(parent: Element, localName: string): string {
+  return [...parent.getElementsByTagName('*')]
+    .find(element => element.localName === localName)
+    ?.textContent
+    ?.trim() || ''
 }
 
 function cleanSummary(value: string): string {
