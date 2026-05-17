@@ -234,7 +234,7 @@ function EmbedModeButtons({ mode, onChange }: { mode: YouTubeEmbedMode; onChange
 
 function VideoPreview({ video, mode, large = false }: { video: FeedVideo; mode: YouTubeEmbedMode; large?: boolean }) {
   const embed = buildYouTubeEmbedUrl(video.id, '', mode)
-  const canEmbed = /^[a-zA-Z0-9_-]{11}$/.test(video.id)
+  const canEmbed = Boolean(embed)
 
   return (
     <div className={large ? 'video-preview large' : 'video-preview'}>

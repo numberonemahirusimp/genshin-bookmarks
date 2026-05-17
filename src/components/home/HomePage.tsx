@@ -500,9 +500,9 @@ function RouteNotes() {
 
 function YouTubeWidget() {
   const [rawUrl, setRawUrl] = useLocalState('home-youtube-url', '')
-  const [embedMode, setEmbedMode] = useLocalState<YouTubeEmbedMode>('home-youtube-embed-mode', 'standard')
+  const [embedMode, setEmbedMode] = useLocalState<YouTubeEmbedMode>('home-youtube-embed-mode', 'privacy')
   const [draftUrl, setDraftUrl] = useState(rawUrl)
-  const embed = getYouTubeEmbed(rawUrl, embedMode)
+  const embed = buildYouTubeEmbedUrl(rawUrl, '', embedMode)
 
   function loadVideo() {
     setRawUrl(draftUrl.trim())
@@ -515,8 +515,8 @@ function YouTubeWidget() {
 
   return (
     <div className="ui-sans space-y-3">
-      <div className="youtube-frame">
-        {embed ? (
+      {embed ? (
+        <div className="youtube-card">
           <iframe
             key={embed}
             src={embed}
@@ -525,12 +525,16 @@ function YouTubeWidget() {
             referrerPolicy="strict-origin-when-cross-origin"
             allowFullScreen
           />
-        ) : (
+        </div>
+      ) : rawUrl ? (
+        <div className="youtube-error">Paste a valid YouTube video link.</div>
+      ) : (
+        <div className="youtube-card">
           <div className="flex h-full min-h-[210px] items-center justify-center px-6 text-center text-sm" style={{ color: 'rgba(216,200,175,0.58)' }}>
             Paste a YouTube link below.
           </div>
-        )}
-      </div>
+        </div>
+      )}
       {embed && (
         <div className="youtube-mode-row">
           {youtubeEmbedModes.map(mode => (
@@ -575,48 +579,6 @@ function YouTubeWidget() {
       </div>
     </div>
   )
-}
-
-function getYouTubeEmbed(input: string, mode: YouTubeEmbedMode): string | null {
-  const value = input.trim()
-  if (!value) return null
-
-  const bareId = value.match(/^[a-zA-Z0-9_-]{11}$/)?.[0]
-  if (bareId) return buildYouTubeEmbedUrl(bareId, '', mode)
-
-  try {
-    const url = new URL(value)
-    const host = url.hostname.replace(/^www\./, '').replace(/^m\./, '')
-    let id = ''
-
-    if (host === 'youtu.be') {
-      id = url.pathname.split('/').filter(Boolean)[0] || ''
-    } else if (host.endsWith('youtube.com')) {
-      if (url.pathname === '/watch') id = url.searchParams.get('v') || ''
-      else if (url.pathname.startsWith('/shorts/') || url.pathname.startsWith('/embed/') || url.pathname.startsWith('/live/')) {
-        id = url.pathname.split('/').filter(Boolean)[1] || ''
-      }
-    }
-
-    const cleanId = id.match(/^[a-zA-Z0-9_-]{11}$/)?.[0]
-    if (!cleanId) return null
-
-    const params = new URLSearchParams()
-    const start = parseYouTubeStart(url.searchParams.get('t') || url.searchParams.get('start') || '')
-    if (start > 0) params.set('start', String(start))
-    const query = params.toString()
-    return buildYouTubeEmbedUrl(cleanId, query, mode)
-  } catch {
-    return null
-  }
-}
-
-function parseYouTubeStart(value: string): number {
-  if (!value) return 0
-  if (/^\d+$/.test(value)) return Number(value)
-  const match = value.match(/(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s)?/)
-  if (!match) return 0
-  return (Number(match[1] || 0) * 3600) + (Number(match[2] || 0) * 60) + Number(match[3] || 0)
 }
 
 function useLocalState<T>(key: string, fallback: T): [T, (value: T) => void] {
