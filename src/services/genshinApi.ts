@@ -266,30 +266,54 @@ export async function fetchStats(auth: GenshinAuth): Promise<GenshinStats | null
 export async function getAuthFromCookies(): Promise<GenshinAuth | null> {
   if (typeof chrome === 'undefined' || !chrome.cookies) return null
 
+  const domains = [
+    'https://act.hoyolab.com',
+    'https://www.hoyolab.com',
+    'https://act.hoyoverse.com',
+    'https://www.hoyoverse.com',
+  ]
+
+  async function tryGetCookie(name: string): Promise<string | null> {
+    for (const url of domains) {
+      try {
+        const cookie = await new Promise<chrome.cookies.Cookie | null>(resolve =>
+          chrome.cookies.get({ url, name }, c => resolve(c || null))
+        )
+        if (cookie?.value) return cookie.value
+      } catch {}
+    }
+    return null
+  }
+
   try {
-    const ltoken = await new Promise<string | null>(resolve =>
-      chrome.cookies.get({ url: 'https://act.hoyolab.com', name: 'ltoken' },
-        cookie => resolve(cookie?.value || null))
-    )
-    const ltuid = await new Promise<string | null>(resolve =>
-      chrome.cookies.get({ url: 'https://act.hoyolab.com', name: 'ltuid' },
-        cookie => resolve(cookie?.value || null))
-    )
-    const uid = await new Promise<string | null>(resolve =>
-      chrome.cookies.get({ url: 'https://act.hoyolab.com', name: 'account_mid_v2' },
-        cookie => resolve(cookie?.value || null))
-    )
-    const ltoken_v2 = await new Promise<string | null>(resolve =>
-      chrome.cookies.get({ url: 'https://act.hoyolab.com', name: 'ltoken_v2' },
-        cookie => resolve(cookie?.value || null))
-    )
-    const ltuid_v2 = await new Promise<string | null>(resolve =>
-      chrome.cookies.get({ url: 'https://act.hoyolab.com', name: 'ltuid_v2' },
-        cookie => resolve(cookie?.value || null))
-    )
+    const ltoken = await tryGetCookie('ltoken')
+    const ltuid = await tryGetCookie('ltuid')
+    const ltoken_v2 = await tryGetCookie('ltoken_v2')
+    const ltuid_v2 = await tryGetCookie('ltuid_v2')
 
     if (!ltoken || !ltuid) return null
-    return { ltoken, ltuid, uid: uid || '', ltoken_v2: ltoken_v2 || undefined, ltuid_v2: ltuid_v2 || undefined }
+
+    // Try to auto-detect Genshin UID from HoYoLab API
+    let uid = ''
+    try {
+      const res = await fetch(
+        `https://bbs-api-os.hoyoverse.com/game_record/card/wapi/getGameRecordCard?uid=${ltuid}`,
+        {
+          headers: {
+            'Cookie': `ltoken=${ltoken}; ltuid=${ltuid}${ltoken_v2 ? `; ltoken_v2=${ltoken_v2}; ltuid_v2=${ltuid_v2}` : ''}`,
+            'x-rpc-app_version': APP_VERSION,
+            'x-rpc-client_type': CLIENT_TYPE,
+          }
+        }
+      )
+      const data = await res.json()
+      if (data.retcode === 0 && data.data?.list) {
+        const genshinAccount = data.data.list.find((g: any) => g.game_id === 2)
+        if (genshinAccount) uid = String(genshinAccount.game_role_id)
+      }
+    } catch {}
+
+    return { ltoken, ltuid, uid, ltoken_v2: ltoken_v2 || undefined, ltuid_v2: ltuid_v2 || undefined }
   } catch {
     return null
   }

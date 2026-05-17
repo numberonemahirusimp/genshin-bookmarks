@@ -20,6 +20,7 @@ export function GenshinDashboard({ auth, onAuthChange }: GenshinDashboardProps) 
   const [uid, setUid] = useState(auth?.uid || '')
   const [tab, setTab] = useState<TabId>('overview')
   const [loading, setLoading] = useState(false)
+  const [detecting, setDetecting] = useState(false)
   const [resin, setResin] = useState<ResinData | null>(null)
   const [stats, setStats] = useState<GenshinStats | null>(null)
   const [characters, setCharacters] = useState<CharacterData[]>([])
@@ -62,7 +63,7 @@ export function GenshinDashboard({ auth, onAuthChange }: GenshinDashboardProps) 
           <div className="space-y-4">
             {(['uid', 'ltuid', 'ltoken'] as const).map((field) => (
               <label key={field} className="ui-sans block text-xs uppercase tracking-[0.12em]" style={{ color: 'rgba(216,200,175,0.62)' }}>
-                {field}
+                {field === 'uid' ? 'UID (in-game, e.g. 812345678)' : field === 'ltuid' ? 'ltuid (HoYoLab account ID)' : 'ltoken (login token)'}
                 <input
                   value={field === 'uid' ? uid : field === 'ltuid' ? ltuid : ltoken}
                   onChange={(event) => {
@@ -71,7 +72,7 @@ export function GenshinDashboard({ auth, onAuthChange }: GenshinDashboardProps) 
                     else if (field === 'ltuid') setLtuid(value)
                     else setLtoken(value)
                   }}
-                  placeholder={field === 'uid' ? 'e.g. 812345678' : 'From cookies'}
+                  placeholder={field === 'uid' ? 'Your Genshin UID — numeric, found in-game' : 'From browser cookies'}
                   className="mt-2 w-full rounded-lg border bg-black/20 px-4 py-3 text-sm normal-case tracking-normal outline-none"
                   style={{ borderColor: 'rgba(229,194,137,0.18)', color: 'rgba(255,249,237,0.86)' }}
                 />
@@ -82,13 +83,22 @@ export function GenshinDashboard({ auth, onAuthChange }: GenshinDashboardProps) 
           <div className="mt-6 flex flex-wrap items-center gap-3">
             <button
               onClick={async () => {
+                setDetecting(true)
                 const cookies = await getAuthFromCookies()
-                if (cookies) { setLtuid(cookies.ltuid); setLtoken(cookies.ltoken); setUid(cookies.uid) }
+                if (cookies) {
+                  setLtuid(cookies.ltuid)
+                  setLtoken(cookies.ltoken)
+                  if (cookies.uid) setUid(cookies.uid)
+                }
+                setDetecting(false)
               }}
+              disabled={detecting}
               className="archive-pill ui-sans flex items-center gap-2 px-4 py-2 text-xs"
               type="button"
+              style={{ opacity: detecting ? 0.5 : 1 }}
             >
-              <RefreshCw size={12} /> Detect from Browser
+              <RefreshCw size={12} style={detecting ? { animation: 'spin 1s linear infinite' } : {}} />
+              {detecting ? 'Detecting...' : 'Detect from Browser'}
             </button>
             <button
               onClick={async () => {
@@ -101,14 +111,23 @@ export function GenshinDashboard({ auth, onAuthChange }: GenshinDashboardProps) 
                 await db.setSetting('genshinAuth', nextAuth)
                 onAuthChange(nextAuth)
               }}
-              disabled={!ltuid || !ltoken}
+              disabled={!ltuid || !ltoken || !uid}
               className="archive-pill ui-sans px-5 text-sm"
-              style={{ opacity: !ltuid || !ltoken ? 0.45 : 1 }}
+              style={{ opacity: !ltuid || !ltoken || !uid ? 0.45 : 1 }}
               type="button"
             >
               Save & Connect
             </button>
           </div>
+
+          <details className="mt-5 ui-sans" style={{ color: 'rgba(216,200,175,0.45)' }}>
+            <summary className="text-[10px] cursor-pointer hover:text-[rgba(216,200,175,0.65)] transition-colors">Where do I find these?</summary>
+            <div className="mt-2 p-3 rounded-lg bg-black/15 border text-[10px] leading-relaxed space-y-1" style={{ borderColor: 'rgba(229,194,137,0.12)' }}>
+              <p><strong style={{ color: 'rgba(216,200,175,0.65)' }}>UID:</strong> Open Genshin Impact → Paimon menu (top-left) → your UID is at the bottom</p>
+              <p><strong style={{ color: 'rgba(216,200,175,0.65)' }}>ltuid & ltoken:</strong> Log into <a href="https://www.hoyolab.com" target="_blank" rel="noopener noreferrer" className="underline" style={{ color: 'rgba(229,194,137,0.6)' }}>hoyolab.com</a> in this browser, then click "Detect from Browser" above</p>
+              <p><strong style={{ color: 'rgba(216,200,175,0.65)' }}>Or manually:</strong> Browser DevTools → Application → Cookies → hoyolab.com → find <code>ltuid</code> and <code>ltoken</code></p>
+            </div>
+          </details>
         </div>
       </div>
     )
