@@ -131,6 +131,9 @@ The goal was simple: if HoYoverse made a productivity tool, this is what it woul
 
 ## What's Not Here (Yet)
 
+- **News feed tab** — a dedicated Genshin news aggregator is being built right now. Patch notes, event banners, community highlights — all in one place
+- **YouTube integration** — pulling official HoYo trailers, character demos, and OST uploads into a browsable feed inside the extension
+- **New home page widgets** — the current widget set (clock, stats, resin, characters) is just the start. More are coming, and eventually you'll be able to pick and arrange whatever you want
 - Custom widget builder — the home page widgets are hardcoded for now
 - Cloud sync between devices — everything lives in IndexedDB locally
 - Mobile support — this is built for desktop browsers, period
