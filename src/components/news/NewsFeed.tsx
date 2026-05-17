@@ -58,11 +58,11 @@ const fallbackArticles: FeedArticle[] = [
 
 const fallbackVideos: FeedVideo[] = [
   {
-    id: 'oIFafp10VLU',
-    title: 'What am I now, you ask? Just a "human" who has lost her voice.',
-    link: 'https://www.youtube.com/shorts/oIFafp10VLU',
-    date: '2026-05-17T10:01:13+00:00',
-    thumbnail: 'https://i4.ytimg.com/vi/oIFafp10VLU/hqdefault.jpg',
+    id: 'HQuhLaFAsVU',
+    title: 'Character Teaser - "Nicole: The Silenced Golden Strings"',
+    link: 'https://www.youtube.com/watch?v=HQuhLaFAsVU',
+    date: '2026-05-14T04:00:16+00:00',
+    thumbnail: 'https://i1.ytimg.com/vi/HQuhLaFAsVU/hqdefault.jpg',
     channel: 'Genshin Impact',
   },
 ]
@@ -290,17 +290,18 @@ async function loadVideos(): Promise<FeedVideo[]> {
   const xml = await fetchText(officialVideoFeed)
   if (!xml) return []
   const doc = new DOMParser().parseFromString(xml, 'application/xml')
-  return [...doc.querySelectorAll('entry')].slice(0, 8).map(entry => {
+  return [...doc.querySelectorAll('entry')].map(entry => {
     const id = xmlText(entry, 'videoId')
+    const link = entry.querySelector('link')?.getAttribute('href') || `https://www.youtube.com/watch?v=${id}`
     return {
       id,
       title: text(entry, 'title') || 'Genshin Impact video',
-      link: entry.querySelector('link')?.getAttribute('href') || `https://www.youtube.com/watch?v=${id}`,
+      link,
       date: text(entry, 'published') || new Date().toISOString(),
       thumbnail: entry.querySelector('thumbnail')?.getAttribute('url') || '',
       channel: text(entry, 'name') || 'Genshin Impact',
     }
-  }).filter(video => video.id)
+  }).filter(video => video.id && isRegularYouTubeWatchUrl(video.link)).slice(0, 8)
 }
 
 async function fetchText(url: string): Promise<string> {
@@ -332,6 +333,15 @@ function xmlText(parent: Element, localName: string): string {
     .find(element => element.localName === localName)
     ?.textContent
     ?.trim() || ''
+}
+
+function isRegularYouTubeWatchUrl(value: string): boolean {
+  try {
+    const url = new URL(value)
+    return url.hostname.includes('youtube.com') && url.pathname === '/watch' && Boolean(url.searchParams.get('v'))
+  } catch {
+    return false
+  }
 }
 
 function cleanSummary(value: string): string {
