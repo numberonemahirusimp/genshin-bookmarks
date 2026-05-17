@@ -12,20 +12,24 @@ export function buildYouTubeEmbedUrl(id: string, query = '', mode: YouTubeEmbedM
   params.set('playsinline', '1')
 
   if (mode === 'standard') {
-    const origin = getPlayerOrigin()
     params.set('enablejsapi', '1')
-    params.set('origin', origin)
-    params.set('widget_referrer', origin)
+    const origin = getPlayerOrigin()
+    if (origin) {
+      params.set('origin', origin)
+      params.set('widget_referrer', origin)
+    }
   }
 
   const host = mode === 'privacy' ? 'https://www.youtube-nocookie.com' : 'https://www.youtube.com'
   return `${host}/embed/${id}?${params.toString()}`
 }
 
-function getPlayerOrigin(): string {
-  if (typeof window === 'undefined') return 'https://www.youtube.com'
+function getPlayerOrigin(): string | null {
+  if (typeof window === 'undefined') return null
+  // In Chrome extension context, don't send origin — YouTube rejects chrome-extension:// URLs
+  if (window.location.protocol === 'chrome-extension:') return null
   if (window.location.protocol === 'http:' || window.location.protocol === 'https:') {
     return window.location.origin
   }
-  return 'https://youtube.com'
+  return null
 }
