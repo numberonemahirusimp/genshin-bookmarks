@@ -43,12 +43,23 @@ The localhost preview is only for development. To test the real Chrome extension
 - Quick-save context menu.
 - Chrome history view.
 - Fuzzy search with `Ctrl+K`.
-- Wallpaper gallery.
+- Wallpaper gallery — click the wallpaper button to open `wallpapers.html` in a new tab with a full gallery view, search, opacity controls, and custom wallpaper upload.
 - Local music player support.
 - HoYoLab widget support.
 - Official news and update feed.
 - Official YouTube video panel with embed fallback handling.
 - Cursor sparkle effect.
+
+## Wallpaper Gallery
+
+The wallpaper button in the dock opens `wallpapers.html` in a new browser tab. This is a standalone React page bundled alongside the extension — it is not a React modal.
+
+- Browse all built-in wallpapers with a search filter.
+- Adjust wallpaper opacity with a slider.
+- Upload custom wallpapers (stored in `chrome.storage.local`).
+- Changes apply immediately to the extension's background.
+
+The wallpaper list comes from `wallpapers/manifest.json` inside the extension folder. Custom uploads and opacity are persisted across sessions.
 
 ## About YouTube Videos
 
