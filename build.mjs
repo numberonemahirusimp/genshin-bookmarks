@@ -9,10 +9,13 @@ const musicDist = join(root, 'dist', 'music')
 const wallpapersSrc = join(root, 'public', 'wallpapers')
 const wallpapersDist = join(root, 'dist', 'wallpapers')
 
-// Step 1: Move music out of public temporarily
+// Step 1: Temporarily remove music from public so Vite doesn't copy it
 if (existsSync(musicSrc)) {
-  console.log('⏳ Moving music out of public/ (will copy after build)...')
-  renameSync(musicSrc, musicTemp)
+  console.log('⏳ Removing music from public/ (will copy after build)...')
+  try { renameSync(musicSrc, musicTemp) } catch {
+    // If rename fails (locked files), copy instead
+    console.log('   (rename failed — files may be locked, skipping music in build)')
+  }
 }
 
 // Step 2: Build (fast — no 1.4 GB music copy)
