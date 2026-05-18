@@ -1,2 +1,1 @@
-public/music/** filter=lfs diff=lfs merge=lfs -text
-public/wallpapers/** filter=lfs diff=lfs merge=lfs -text
+
