@@ -26,6 +26,7 @@ export default defineConfig({
       input: {
         main: path.resolve(__dirname, 'index.html'),
         popup: path.resolve(__dirname, 'popup.html'),
+        wallpapers: path.resolve(__dirname, 'wallpapers.html'),
         background: path.resolve(__dirname, 'src/extension/background.ts'),
         content: path.resolve(__dirname, 'src/extension/content.ts'),
       },

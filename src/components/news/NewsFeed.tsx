@@ -29,6 +29,16 @@ const articleFeeds = [
 
 const officialVideoFeed = 'https://www.youtube.com/feeds/videos.xml?channel_id=UCiS882YPwZt1NfaM0gR0D9Q'
 
+const creatorVideoFeeds = [
+  { channel: 'Zy0x', url: 'https://www.youtube.com/feeds/videos.xml?channel_id=UClYObD5y2ZSAcFhEtg_ATnw' },
+  { channel: 'SevyPlays', url: 'https://www.youtube.com/feeds/videos.xml?channel_id=UCbH9gOjlJHCrCjaz-mIvyYg' },
+  { channel: 'Gacha Gamer', url: 'https://www.youtube.com/feeds/videos.xml?channel_id=UC8BTtymnCZ7jTvt09cjPMwQ' },
+  { channel: 'taka gg', url: 'https://www.youtube.com/feeds/videos.xml?channel_id=UC65Haje10c2f5zSQjeJXI2A' },
+  { channel: 'Xlice', url: 'https://www.youtube.com/feeds/videos.xml?channel_id=UCzrJ_-d_n3LmpJNSYVxXsHQ' },
+]
+
+const creatorSpotlights = ['Zy0x', 'SevyPlays', 'Gacha Gamer', 'taka gg', 'Xlice']
+
 const fallbackArticles: FeedArticle[] = [
   {
     id: 'fallback-version',
@@ -46,14 +56,6 @@ const fallbackArticles: FeedArticle[] = [
     category: 'Event',
     summary: 'Check ongoing event posts and reward details from the official Genshin Impact news page.',
   },
-  {
-    id: 'fallback-feed',
-    title: 'Community Feed Refresh',
-    link: 'https://genshin-feed.com/',
-    date: new Date(Date.now() - 7200000).toISOString(),
-    category: 'News',
-    summary: 'This view pulls official article feeds and shuffles a few highlights for a more alive dashboard.',
-  },
 ]
 
 const fallbackVideos: FeedVideo[] = [
@@ -65,14 +67,58 @@ const fallbackVideos: FeedVideo[] = [
     thumbnail: 'https://i1.ytimg.com/vi/HQuhLaFAsVU/hqdefault.jpg',
     channel: 'Genshin Impact',
   },
+  {
+    id: 'WuKMCKqobrU',
+    title: 'Zy0x DESTROYS The New Imaginarium Theater While Going Slightly Insane... | Genshin Impact',
+    link: 'https://www.youtube.com/watch?v=WuKMCKqobrU',
+    date: '2026-05-12T00:59:24+00:00',
+    thumbnail: 'https://i1.ytimg.com/vi/WuKMCKqobrU/hqdefault.jpg',
+    channel: 'Zy0x',
+  },
+  {
+    id: 'LEk0QXBU-G0',
+    title: "WE'RE GOING BACK TO SUMERU !! | Genshin 6.6/Luna VII Livestream Reaction",
+    link: 'https://www.youtube.com/watch?v=LEk0QXBU-G0',
+    date: '2026-05-08T14:00:39+00:00',
+    thumbnail: 'https://i1.ytimg.com/vi/LEk0QXBU-G0/hqdefault.jpg',
+    channel: 'Zy0x',
+  },
+  {
+    id: 'zER_yh9mbeU',
+    title: 'EARLY ACCESS TO NICOLE CONFIRMS WHAT WE ALL SUSPECTED | C0 Nicole Build & Showcase (Genshin Impact)',
+    link: 'https://www.youtube.com/watch?v=zER_yh9mbeU',
+    date: '2026-05-15T04:01:04+00:00',
+    thumbnail: 'https://i1.ytimg.com/vi/zER_yh9mbeU/hqdefault.jpg',
+    channel: 'Gacha Gamer',
+  },
+  {
+    id: 'J6YpT6gfXbo',
+    title: 'MUALANI SUMMONS but everything goes wrong | Genshin Impact Summons',
+    link: 'https://www.youtube.com/watch?v=J6YpT6gfXbo',
+    date: '2024-08-31T00:33:44+00:00',
+    thumbnail: 'https://i1.ytimg.com/vi/J6YpT6gfXbo/hqdefault.jpg',
+    channel: 'Xlice',
+  },
 ]
 
 const trendSearches = [
+  'zyox genshin impact',
+  'sevyplays genshin impact',
+  'gacha gamer genshin impact',
+  'taka gg genshin impact',
+  'xlice genshin impact',
   'genshin impact new update',
   'genshin impact version trailer',
   'genshin impact event guide',
   'genshin impact character demo',
   'genshin impact spiral abyss',
+]
+
+const quickRoutes = [
+  { label: 'Official News', href: 'https://genshin.hoyoverse.com/en/news' },
+  { label: 'Version Notes', href: 'https://genshin.hoyoverse.com/en/news?category=2' },
+  { label: 'Current Events', href: 'https://genshin.hoyoverse.com/en/news?category=3' },
+  { label: 'Creator Guides', href: 'https://www.youtube.com/results?search_query=genshin+impact+creator+guides' },
 ]
 
 export function NewsFeed() {
@@ -102,7 +148,7 @@ export function NewsFeed() {
   const sideArticles = mixedArticles.slice(1, 5)
   const storyCards = mixedArticles.slice(5)
   const featuredVideo = videos[0] || fallbackVideos[0]
-  const otherVideos = videos.slice(1, 7)
+  const otherVideos = videos.slice(1, 11)
 
   return (
     <main className="feed-page">
@@ -115,6 +161,33 @@ export function NewsFeed() {
           <h1>News, updates, and videos in one place</h1>
           <p>Official posts are shuffled into a fresh dashboard, with Genshin video drops and fast YouTube searches for what people are watching now.</p>
         </div>
+        <aside className="feed-hero-aside archive-card" aria-label="Creator spotlight">
+          <div className="feed-section-title">
+            <Video size={16} />
+            Creator Watch
+          </div>
+          <div className="creator-watch-grid">
+            {creatorSpotlights.map(creator => (
+              <a
+                key={creator}
+                href={`https://www.youtube.com/results?search_query=${encodeURIComponent(`${creator} genshin impact`)}`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                <span>{creator.slice(0, 2)}</span>
+                <strong>{creator}</strong>
+              </a>
+            ))}
+          </div>
+          <a
+            className="creator-watch-open"
+            href="https://www.youtube.com/results?search_query=genshin+impact+creator+guides"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Browse creator guides <ExternalLink size={13} />
+          </a>
+        </aside>
       </section>
 
       <section className="feed-layout">
@@ -144,12 +217,26 @@ export function NewsFeed() {
             </a>
           ))}
           {!sideArticles.length && <FeedSkeleton />}
+          <div className="feed-shortcuts archive-card">
+            <div className="feed-section-title">
+              <Sparkles size={15} />
+              Quick Routes
+            </div>
+            <div className="feed-shortcut-grid">
+              {quickRoutes.map(route => (
+                <a href={route.href} target="_blank" rel="noreferrer" key={route.label}>
+                  <span>{route.label}</span>
+                  <ExternalLink size={12} />
+                </a>
+              ))}
+            </div>
+          </div>
         </div>
 
         <section className="video-panel archive-card">
           <div className="feed-section-title">
             <Video size={16} />
-            Official Videos
+            Creator & Official Videos
           </div>
           <VideoPreview video={featuredVideo} mode={embedMode} large />
           <EmbedModeButtons mode={embedMode} onChange={setEmbedMode} />
@@ -276,7 +363,21 @@ async function loadArticles(): Promise<FeedArticle[]> {
 }
 
 async function loadVideos(): Promise<FeedVideo[]> {
-  const xml = await fetchText(officialVideoFeed)
+  const feeds = [
+    { channel: 'Genshin Impact', url: officialVideoFeed },
+    ...creatorVideoFeeds,
+  ]
+  const loaded = await Promise.all(feeds.map(feed => loadVideoFeed(feed.url, feed.channel)))
+  const unique = new Map<string, FeedVideo>()
+  loaded.flat().forEach(video => {
+    if (!unique.has(video.id)) unique.set(video.id, video)
+  })
+
+  return [...unique.values()].sort((a, b) => Date.parse(b.date) - Date.parse(a.date)).slice(0, 12)
+}
+
+async function loadVideoFeed(url: string, fallbackChannel: string): Promise<FeedVideo[]> {
+  const xml = await fetchText(url)
   if (!xml) return []
   const doc = new DOMParser().parseFromString(xml, 'application/xml')
   return [...doc.querySelectorAll('entry')].map(entry => {
@@ -288,9 +389,9 @@ async function loadVideos(): Promise<FeedVideo[]> {
       link,
       date: text(entry, 'published') || new Date().toISOString(),
       thumbnail: entry.querySelector('thumbnail')?.getAttribute('url') || '',
-      channel: text(entry, 'name') || 'Genshin Impact',
+      channel: text(entry, 'name') || fallbackChannel,
     }
-  }).filter(video => video.id && isRegularYouTubeWatchUrl(video.link)).slice(0, 8)
+  }).filter(video => video.id && isRegularYouTubeWatchUrl(video.link) && isGenshinVideo(video)).slice(0, 4)
 }
 
 async function fetchText(url: string): Promise<string> {
@@ -331,6 +432,23 @@ function isRegularYouTubeWatchUrl(value: string): boolean {
   } catch {
     return false
   }
+}
+
+function isGenshinVideo(video: FeedVideo): boolean {
+  const value = `${video.title} ${video.channel}`.toLowerCase()
+  return [
+    'genshin',
+    'teyvat',
+    'natlan',
+    'sumeru',
+    'fontaine',
+    'inazuma',
+    'liyue',
+    'mondstadt',
+    'spiral abyss',
+    'imaginarium theater',
+    'archon',
+  ].some(term => value.includes(term))
 }
 
 function cleanSummary(value: string): string {

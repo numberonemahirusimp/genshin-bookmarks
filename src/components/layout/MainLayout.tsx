@@ -7,7 +7,6 @@ import { SearchOverlay } from '../search/SearchOverlay'
 import { ThemeSwitcher } from '../themes/ThemeSwitcher'
 import { GenshinDashboard } from '../genshin/GenshinDashboard'
 import { HistoryView } from '../history/HistoryView'
-import { WallpaperPicker } from '../wallpaper/WallpaperPicker'
 import { NewsFeed } from '../news/NewsFeed'
 import { Bookmark, Folder, Tag, ThemeId } from '../../types'
 import { GenshinAuth } from '../../services/genshinApi'
@@ -66,8 +65,14 @@ export function MainLayout({
 }: MainLayoutProps) {
   const [themeMenuOpen, setThemeMenuOpen] = useState(false)
   const [dockView, setDockView] = useState<DockView>('home')
-  const [showWallpaperPicker, setShowWallpaperPicker] = useState(false)
   const wallpaper = useWallpaper()
+
+  const openWallpaperGallery = useCallback(() => {
+    const url = typeof chrome !== 'undefined' && chrome.runtime?.getURL
+      ? chrome.runtime.getURL('wallpapers.html')
+      : '/wallpapers.html'
+    window.open(url, '_blank', 'noopener,noreferrer')
+  }, [])
 
   const handleDockChange = useCallback((view: DockView) => {
     setDockView(view)
@@ -250,7 +255,7 @@ export function MainLayout({
 
       {/* Floating wallpaper button */}
       <button
-        onClick={() => setShowWallpaperPicker(true)}
+        onClick={openWallpaperGallery}
         title="Wallpaper gallery"
         style={{
           position: 'fixed', bottom: 88, right: 22, zIndex: 45,
@@ -271,25 +276,6 @@ export function MainLayout({
           <polyline points="21 15 16 10 5 21"/>
         </svg>
       </button>
-
-      {/* Wallpaper picker overlay */}
-      {showWallpaperPicker && (
-        <WallpaperPicker
-          wallpapers={wallpaper.wallpapers}
-          mode={wallpaper.mode}
-          active={wallpaper.active}
-          opacity={wallpaper.opacity}
-          customWallpapers={wallpaper.customWallpapers}
-          onSetMode={wallpaper.setMode}
-          onSetActive={wallpaper.setActive}
-          onSetOpacity={wallpaper.setOpacity}
-          onAddCustom={wallpaper.addCustomWallpaper}
-          onDeleteCustom={wallpaper.deleteCustomWallpaper}
-          onHideBuiltin={() => {}}
-          onRestoreBuiltin={() => {}}
-          onClose={() => setShowWallpaperPicker(false)}
-        />
-      )}
 
       {/* Search */}
       <SearchOverlay

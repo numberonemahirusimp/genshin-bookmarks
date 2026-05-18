@@ -36,6 +36,23 @@ export function useWallpaper() {
   }, [])
 
   useEffect(() => {
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === STORAGE_KEY) {
+        try {
+          setState(event.newValue ? { ...defaults, ...JSON.parse(event.newValue) } : defaults)
+        } catch {}
+      }
+      if (event.key === CUSTOM_KEY) {
+        try {
+          setCustomWallpapers(event.newValue ? JSON.parse(event.newValue) : [])
+        } catch {}
+      }
+    }
+    window.addEventListener('storage', handleStorage)
+    return () => window.removeEventListener('storage', handleStorage)
+  }, [])
+
+  useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
   }, [state])
 

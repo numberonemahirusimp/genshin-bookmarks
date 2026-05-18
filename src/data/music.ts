@@ -6,6 +6,7 @@ const regionNames: Record<ThemeId, string> = {
   inazuma: 'Inazuma',
   sumeru: 'Sumeru',
   fontaine: 'Fontaine',
+  natlan: 'Natlan',
   nodkrai: 'Nodkrai',
 }
 

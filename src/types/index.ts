@@ -1,7 +1,7 @@
 export type BookmarkId = string
 export type FolderId = string
 export type TagId = string
-export type ThemeId = 'mondstadt' | 'liyue' | 'inazuma' | 'sumeru' | 'fontaine' | 'nodkrai'
+export type ThemeId = 'mondstadt' | 'liyue' | 'inazuma' | 'sumeru' | 'fontaine' | 'natlan' | 'nodkrai'
 
 export interface Bookmark {
   id: BookmarkId
