@@ -1132,7 +1132,7 @@
     z-index: 120;
     display: grid;
     place-items: center;
-    padding: 28px;
+    padding: 20px;
     background: rgba(4, 8, 16, 0.68);
     backdrop-filter: blur(14px);
     -webkit-backdrop-filter: blur(14px);
@@ -1140,9 +1140,9 @@
 
   .character-build-panel {
     display: grid;
-    grid-template-columns: minmax(280px, 0.88fr) minmax(360px, 1.12fr);
-    width: min(1180px, calc(100vw - 44px));
-    max-height: min(760px, calc(100vh - 44px));
+    grid-template-columns: minmax(240px, 0.75fr) minmax(0, 1fr);
+    width: min(900px, calc(100vw - 40px));
+    max-height: min(620px, calc(100vh - 40px));
     overflow: hidden;
     border-radius: 16px;
     border: 1px solid rgba(229, 194, 137, 0.24);
@@ -1154,18 +1154,37 @@
 
   .character-build-art {
     position: relative;
-    min-height: 620px;
+    min-height: 0;
     overflow: hidden;
     border-right: 1px solid rgba(229, 194, 137, 0.14);
-    background: rgba(0,0,0,0.18);
+    background:
+      radial-gradient(ellipse at 50% 80%, rgba(20, 30, 60, 0.9), rgba(8, 12, 24, 0.98)),
+      linear-gradient(160deg, rgba(40, 55, 100, 0.6), rgba(8, 12, 24, 0.95));
   }
 
   .character-build-art img {
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    object-fit: contain;
     image-rendering: auto;
-    transform: scale(1.04);
+  }
+
+  .character-build-art.is-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(circle at center, rgba(35, 43, 79, 0.6), rgba(8, 12, 24, 0.95));
+  }
+
+  .character-build-art.is-icon img {
+    width: 140px;
+    height: 140px;
+    object-fit: contain;
+    border-radius: 50%;
+    border: 3px solid rgba(229, 194, 137, 0.44);
+    background: radial-gradient(circle, rgba(29, 35, 64, 0.8), rgba(10, 15, 30, 0.9));
+    box-shadow: 0 0 30px rgba(229, 194, 137, 0.25);
+    transform: none;
   }
 
   .character-build-fade {
@@ -2084,7 +2103,7 @@
   }
 
   .character-build-art {
-    min-height: 280px;
+    min-height: 220px;
     border-right: 0;
     border-bottom: 1px solid rgba(229, 194, 137, 0.14);
   }

@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   CharacterData, fetchCharacters, fetchEnkaShowcase, fetchResinData, fetchStats,
   getAuthFromCookies,
@@ -674,8 +674,8 @@ function CharacterBuildMenu({ character, onClose }: { character: ArchiveCharacte
   return (
     <div className="character-build-overlay" role="dialog" aria-modal="true">
       <div className="character-build-panel">
-        <div className="character-build-art">
-          {character.icon && <img src={character.icon} alt="" />}
+        <div className="character-build-art is-icon">
+          {character.icon && <img src={character.icon} alt={character.name} />}
           <div className="character-build-fade" />
           <button className="character-build-close" onClick={onClose} type="button">Close</button>
           <div className="character-build-friendship">Friendship Level: {build?.friendship || character.build?.friendship || '--'}</div>
