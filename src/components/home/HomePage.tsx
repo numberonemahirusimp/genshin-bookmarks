@@ -18,8 +18,10 @@ interface HomePageProps {
   genshinAuth: GenshinAuth | null
   activeTheme: ThemeId
   isThemeOpen: boolean
+  showHistoryDock: boolean
   onThemeChange: (theme: ThemeId) => void
   onThemeToggle: () => void
+  onShowHistoryDockChange: (show: boolean) => void
   onOpenWidget: (widget: WidgetId) => void
 }
 
@@ -58,8 +60,10 @@ export function HomePage({
   genshinAuth,
   activeTheme,
   isThemeOpen,
+  showHistoryDock,
   onThemeChange,
   onThemeToggle,
+  onShowHistoryDockChange,
 }: HomePageProps) {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [now, setNow] = useState(new Date())
@@ -168,6 +172,25 @@ export function HomePage({
                 </button>
               )
             })}
+          </div>
+          <div className="mt-3 border-t pt-3" style={{ borderColor: 'rgba(229,194,137,0.12)' }}>
+            <div className="px-3 pb-2 text-[10px] uppercase tracking-[0.12em]" style={{ color: 'rgba(216,200,175,0.5)' }}>
+              Dock Options
+            </div>
+            <button
+              onClick={() => onShowHistoryDockChange(!showHistoryDock)}
+              className="ui-sans flex w-full items-center gap-3 rounded-md border px-3 py-3 text-left transition-colors"
+              style={{
+                borderColor: showHistoryDock ? 'rgba(229,194,137,0.34)' : 'transparent',
+                background: showHistoryDock ? 'rgba(229,194,137,0.09)' : 'transparent',
+                color: showHistoryDock ? 'rgba(255,249,237,0.9)' : 'rgba(216,200,175,0.65)',
+              }}
+              type="button"
+            >
+              <Clock size={17} />
+              <span className="flex-1">Show History Tab</span>
+              {showHistoryDock && <Check size={14} />}
+            </button>
           </div>
         </div>
       )}

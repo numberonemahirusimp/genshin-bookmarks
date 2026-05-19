@@ -7,6 +7,9 @@ export interface GenshinAuth {
   uid: string
   ltuid_v2?: string
   ltoken_v2?: string
+  account_id_v2?: string
+  cookie_token_v2?: string
+  stoken_v2?: string
 }
 
 export interface GenshinStats {
@@ -61,6 +64,41 @@ export interface CharacterData {
   friendship: number
   constellation: number
   rarity: number
+  weapon?: BuildWeapon
+  artifacts?: BuildArtifact[]
+  stats?: CharacterStat[]
+  source?: 'hoyolab' | 'enka'
+  buildAvailable?: boolean
+}
+
+export interface BuildWeapon {
+  name: string
+  icon: string
+  rarity: number
+  level: number
+  refinement: number
+  mainStat?: string
+  subStat?: string
+  baseAtk?: number
+}
+
+export interface BuildArtifact {
+  id: string
+  name: string
+  icon: string
+  setName: string
+  slot: string
+  rarity: number
+  level: number
+  mainStat: string
+  mainValue: string
+  subStats: CharacterStat[]
+}
+
+export interface CharacterStat {
+  label: string
+  value: string
+  extra?: string
 }
 
 interface ApiResponse<T> {
@@ -133,6 +171,10 @@ function normalizeResin(raw: any): ResinData {
 }
 
 function normalizeCharacter(raw: any): CharacterData {
+  const weapon = normalizeWeapon(raw.weapon)
+  const artifacts = normalizeArtifacts(raw.reliquaries || raw.artifacts)
+  const stats = normalizeCharacterStats(raw)
+
   return {
     id: numberFrom(raw.id, raw.avatar_id),
     image: stringFrom(raw.image, raw.card_image, raw.gacha_card),
@@ -143,8 +185,58 @@ function normalizeCharacter(raw: any): CharacterData {
     friendship: numberFrom(raw.friendship, raw.fetter),
     constellation: numberFrom(raw.constellation, raw.actived_constellation_num),
     rarity: numberFrom(raw.rarity, raw.rank),
+    weapon,
+    artifacts,
+    stats,
+    source: 'hoyolab',
+    buildAvailable: Boolean(weapon || artifacts.length || stats.length),
   }
 }
+
+function normalizeWeapon(raw: any): BuildWeapon | undefined {
+  if (!raw) return undefined
+  return {
+    name: stringFrom(raw.name),
+    icon: stringFrom(raw.icon, raw.image),
+    rarity: numberFrom(raw.rarity, raw.rank),
+    level: numberFrom(raw.level),
+    refinement: numberFrom(raw.refinement, raw.affix_level, raw.promote_level) || 1,
+    mainStat: stringFrom(raw.main_property?.property_name, raw.mainProperty?.name),
+    subStat: stringFrom(raw.sub_property?.property_name, raw.subProperty?.name),
+    baseAtk: numberFrom(raw.main_property?.base, raw.base_atk),
+  }
+}
+
+function normalizeArtifacts(raw: any): BuildArtifact[] {
+  if (!Array.isArray(raw)) return []
+  return raw.map((artifact, index) => ({
+    id: stringFrom(artifact.id) || `${artifact.name || 'artifact'}-${index}`,
+    name: stringFrom(artifact.name),
+    icon: stringFrom(artifact.icon, artifact.image),
+    setName: stringFrom(artifact.set?.name, artifact.set_name),
+    slot: stringFrom(artifact.pos_name, artifact.position, artifact.equip_type) || artifactSlots[index] || 'Artifact',
+    rarity: numberFrom(artifact.rarity, artifact.rank),
+    level: numberFrom(artifact.level),
+    mainStat: stringFrom(artifact.main_property?.property_name, artifact.mainProperty?.name),
+    mainValue: stringFrom(artifact.main_property?.value, artifact.mainProperty?.value),
+    subStats: (artifact.sub_property_list || artifact.substats || []).map((stat: any) => ({
+      label: stringFrom(stat.property_name, stat.name),
+      value: stringFrom(stat.value),
+    })),
+  }))
+}
+
+function normalizeCharacterStats(raw: any): CharacterStat[] {
+  const properties = raw.properties || raw.base_properties || []
+  if (!Array.isArray(properties)) return []
+  return properties.map((stat: any) => ({
+    label: stringFrom(stat.property_name, stat.name),
+    value: stringFrom(stat.final, stat.value, stat.base),
+    extra: stringFrom(stat.add, stat.extra),
+  })).filter((stat: CharacterStat) => stat.label && stat.value)
+}
+
+const artifactSlots = ['Flower', 'Plume', 'Sands', 'Goblet', 'Circlet']
 
 function detectServer(uid: string): string {
   const prefix = uid?.charAt(0)
@@ -174,11 +266,26 @@ function getHeaders(auth: GenshinAuth): Record<string, string> {
     'x-rpc-client_type': CLIENT_TYPE,
     'x-rpc-language': 'en-us',
     'DS': generateDS(),
-    'Cookie': `ltoken=${auth.ltoken}; ltuid=${auth.ltuid}${auth.ltoken_v2 ? `; ltoken_v2=${auth.ltoken_v2}; ltuid_v2=${auth.ltuid_v2}` : ''}`,
+    'Cookie': buildCookieHeader(auth),
     'Origin': 'https://act.hoyolab.com',
     'Referer': 'https://act.hoyolab.com/',
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
   }
+}
+
+function buildCookieHeader(auth: GenshinAuth): string {
+  return [
+    ['ltoken', auth.ltoken],
+    ['ltuid', auth.ltuid],
+    ['ltoken_v2', auth.ltoken_v2],
+    ['ltuid_v2', auth.ltuid_v2],
+    ['account_id_v2', auth.account_id_v2],
+    ['cookie_token_v2', auth.cookie_token_v2],
+    ['stoken_v2', auth.stoken_v2],
+  ]
+    .filter((item): item is [string, string] => Boolean(item[1]))
+    .map(([name, value]) => `${name}=${value}`)
+    .join('; ')
 }
 
 export async function fetchResinData(auth: GenshinAuth): Promise<ResinData | null> {
@@ -186,7 +293,7 @@ export async function fetchResinData(auth: GenshinAuth): Promise<ResinData | nul
     const server = detectServer(auth.uid)
     const res = await fetch(
       `${BASE_URL}/dailyNote?server=${server}&role_id=${auth.uid}`,
-      { headers: getHeaders(auth) }
+      withHoyolabCredentials({ headers: getHeaders(auth) })
     )
     const json: ApiResponse<ResinData> = await res.json()
     if (json.retcode !== 0) {
@@ -206,7 +313,7 @@ export async function fetchCharacters(auth: GenshinAuth): Promise<CharacterData[
 
     const indexRes = await fetch(
       `${BASE_URL}/index?server=${server}&role_id=${auth.uid}`,
-      { headers: getHeaders(auth) }
+      withHoyolabCredentials({ headers: getHeaders(auth) })
     )
     const indexJson: { retcode: number; message: string; data?: { avatars?: { id: number }[] } } = await indexRes.json()
     if (indexJson.retcode !== 0 || !indexJson.data?.avatars) {
@@ -229,7 +336,8 @@ async function fetchCharacterDetails(auth: GenshinAuth, server: string, characte
       {
         method: 'POST',
         headers: { ...getHeaders(auth), 'Content-Type': 'application/json' },
-        body: JSON.stringify({ character_ids: characterIds, role_id: auth.uid, server })
+        body: JSON.stringify({ character_ids: characterIds, role_id: auth.uid, server }),
+        credentials: 'include',
       }
     )
     const json: { retcode: number; message: string; data?: { avatars?: any[] } } = await res.json()
@@ -249,7 +357,7 @@ export async function fetchStats(auth: GenshinAuth): Promise<GenshinStats | null
     const server = detectServer(auth.uid)
     const res = await fetch(
       `${BASE_URL}/index?server=${server}&role_id=${auth.uid}`,
-      { headers: getHeaders(auth) }
+      withHoyolabCredentials({ headers: getHeaders(auth) })
     )
     const json: ApiResponse<{ stats: GenshinStats }> = await res.json()
     if (json.retcode !== 0) {
@@ -267,8 +375,10 @@ export async function getAuthFromCookies(): Promise<GenshinAuth | null> {
   if (typeof chrome === 'undefined' || !chrome.cookies) return null
 
   const domains = [
+    'https://hoyolab.com',
     'https://act.hoyolab.com',
     'https://www.hoyolab.com',
+    'https://bbs-api-os.hoyoverse.com',
     'https://act.hoyoverse.com',
     'https://www.hoyoverse.com',
   ]
@@ -286,24 +396,53 @@ export async function getAuthFromCookies(): Promise<GenshinAuth | null> {
   }
 
   try {
-    const ltoken = await tryGetCookie('ltoken')
-    const ltuid = await tryGetCookie('ltuid')
-    const ltoken_v2 = await tryGetCookie('ltoken_v2')
-    const ltuid_v2 = await tryGetCookie('ltuid_v2')
+    const [
+      ltoken,
+      ltuid,
+      ltoken_v2,
+      ltuid_v2,
+      account_id_v2,
+      cookie_token_v2,
+      stoken_v2,
+    ] = await Promise.all([
+      tryGetCookie('ltoken'),
+      tryGetCookie('ltuid'),
+      tryGetCookie('ltoken_v2'),
+      tryGetCookie('ltuid_v2'),
+      tryGetCookie('account_id_v2'),
+      tryGetCookie('cookie_token_v2'),
+      tryGetCookie('stoken_v2'),
+    ])
 
-    if (!ltoken || !ltuid) return null
+    const accountId = ltuid || ltuid_v2 || account_id_v2
+    const loginToken = ltoken || ltoken_v2 || cookie_token_v2 || stoken_v2
+
+    if (!accountId || !loginToken) return null
+
+    const authCookie = buildCookieHeader({
+      ltuid: accountId,
+      ltoken: loginToken,
+      uid: '',
+      ltuid_v2: ltuid_v2 || account_id_v2 || undefined,
+      ltoken_v2: ltoken_v2 || undefined,
+      account_id_v2: account_id_v2 || undefined,
+      cookie_token_v2: cookie_token_v2 || undefined,
+      stoken_v2: stoken_v2 || undefined,
+    })
 
     // Try to auto-detect Genshin UID from HoYoLab API
     let uid = ''
     try {
       const res = await fetch(
-        `https://bbs-api-os.hoyoverse.com/game_record/card/wapi/getGameRecordCard?uid=${ltuid}`,
+        `https://bbs-api-os.hoyoverse.com/game_record/card/wapi/getGameRecordCard?uid=${accountId}`,
         {
           headers: {
-            'Cookie': `ltoken=${ltoken}; ltuid=${ltuid}${ltoken_v2 ? `; ltoken_v2=${ltoken_v2}; ltuid_v2=${ltuid_v2}` : ''}`,
+            'Cookie': authCookie,
             'x-rpc-app_version': APP_VERSION,
             'x-rpc-client_type': CLIENT_TYPE,
-          }
+            'x-rpc-language': 'en-us',
+          },
+          credentials: 'include',
         }
       )
       const data = await res.json()
@@ -313,10 +452,92 @@ export async function getAuthFromCookies(): Promise<GenshinAuth | null> {
       }
     } catch {}
 
-    return { ltoken, ltuid, uid, ltoken_v2: ltoken_v2 || undefined, ltuid_v2: ltuid_v2 || undefined }
+    return {
+      ltoken: loginToken,
+      ltuid: accountId,
+      uid,
+      ltoken_v2: ltoken_v2 || undefined,
+      ltuid_v2: ltuid_v2 || account_id_v2 || undefined,
+      account_id_v2: account_id_v2 || undefined,
+      cookie_token_v2: cookie_token_v2 || undefined,
+      stoken_v2: stoken_v2 || undefined,
+    }
   } catch {
     return null
   }
+}
+
+function withHoyolabCredentials(init: RequestInit): RequestInit {
+  return {
+    ...init,
+    credentials: 'include',
+  }
+}
+
+export async function fetchEnkaShowcase(uid: string): Promise<CharacterData[] | null> {
+  if (!uid) return null
+
+  try {
+    const res = await fetch(`https://enka.network/api/uid/${encodeURIComponent(uid)}/`)
+    if (!res.ok) {
+      console.warn('Enka API error:', res.status)
+      return null
+    }
+
+    const json = await res.json()
+    const list = Array.isArray(json.avatarInfoList) ? json.avatarInfoList : []
+    return list.map(normalizeEnkaCharacter).filter(Boolean) as CharacterData[]
+  } catch (err) {
+    console.error('Failed to fetch Enka showcase:', err)
+    return null
+  }
+}
+
+function normalizeEnkaCharacter(raw: any): CharacterData {
+  const id = numberFrom(raw.avatarId)
+  const name = stringFrom(raw.nameTextMapHash) || `Character ${id}`
+  const weaponRaw = (raw.equipList || []).find((item: any) => item.weapon)
+  const artifactRaw = (raw.equipList || []).filter((item: any) => item.reliquary)
+  return {
+    id,
+    image: '',
+    icon: '',
+    name,
+    element: '',
+    level: numberFrom(raw.propMap?.['4001']?.val, raw.level),
+    friendship: numberFrom(raw.fetterInfo?.expLevel),
+    constellation: Array.isArray(raw.talentIdList) ? raw.talentIdList.length : 0,
+    rarity: 5,
+    weapon: weaponRaw ? {
+      name: stringFrom(weaponRaw.flat?.nameTextMapHash) || 'Equipped Weapon',
+      icon: enkaIconUrl(stringFrom(weaponRaw.flat?.icon)),
+      rarity: numberFrom(weaponRaw.flat?.rankLevel),
+      level: numberFrom(weaponRaw.weapon?.level),
+      refinement: numberFrom(Object.values(weaponRaw.weapon?.affixMap || {})[0]) + 1 || 1,
+    } : undefined,
+    artifacts: artifactRaw.map((item: any, index: number) => ({
+      id: stringFrom(item.itemId) || `enka-artifact-${index}`,
+      name: stringFrom(item.flat?.nameTextMapHash) || artifactSlots[index] || 'Artifact',
+      icon: enkaIconUrl(stringFrom(item.flat?.icon)),
+      setName: '',
+      slot: artifactSlots[index] || 'Artifact',
+      rarity: numberFrom(item.flat?.rankLevel),
+      level: numberFrom(item.reliquary?.level) - 1,
+      mainStat: stringFrom(item.flat?.reliquaryMainstat?.mainPropId),
+      mainValue: '',
+      subStats: (item.flat?.reliquarySubstats || []).map((stat: any) => ({
+        label: stringFrom(stat.appendPropId),
+        value: String(numberFrom(stat.statValue)),
+      })),
+    })),
+    stats: [],
+    source: 'enka',
+    buildAvailable: true,
+  }
+}
+
+function enkaIconUrl(icon: string): string {
+  return icon ? `https://enka.network/ui/${icon}.png` : ''
 }
 
 export const elementColors: Record<string, string> = {

@@ -27,6 +27,7 @@ interface DockProps {
   onViewChange: (view: DockView) => void
   hasGenshinAuth?: boolean
   themeId: ThemeId
+  showHistory?: boolean
 }
 
 const playIcon = (
@@ -45,12 +46,13 @@ const loopIcon = (
   <svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10" /><polyline points="1 20 1 14 7 14" /><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" /></svg>
 )
 
-export function Dock({ activeView, onViewChange, hasGenshinAuth, themeId }: DockProps) {
+export function Dock({ activeView, onViewChange, hasGenshinAuth, themeId, showHistory = true }: DockProps) {
   const music = useMusic(themeId)
   const [expanded, setExpanded] = useState(false)
   const [showPicker, setShowPicker] = useState(false)
   const hideTimer = useRef<ReturnType<typeof setTimeout>>()
   const areaRef = useRef<HTMLDivElement>(null)
+  const visibleDockItems = showHistory ? dockItems : dockItems.filter(item => item.id !== 'recent')
 
   const btn: React.CSSProperties = {
     display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -78,7 +80,7 @@ export function Dock({ activeView, onViewChange, hasGenshinAuth, themeId }: Dock
         >
           {/* Nav items */}
           <div className="flex flex-1 items-center justify-between px-1">
-            {dockItems.map((item) => {
+            {visibleDockItems.map((item) => {
               const isActive = activeView === item.id
               return (
                 <motion.button

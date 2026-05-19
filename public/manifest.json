@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Teyvat Archive — Bookmark Manager",
   "short_name": "Teyvat Archive",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "A premium bookmark manager inspired by Genshin Impact's UI. Navigate the web like exploring Teyvat.",
   "author": "Teyvat Archive Team",
   "permissions": [
@@ -22,6 +22,9 @@
     "https://*.ytimg.com/*",
     "https://*.youtubei.googleapis.com/*",
     "https://genshin-feed.com/*",
+    "https://genshin-countdown.gengamer.in/*",
+    "https://enka.network/*",
+    "https://bbs-api-os.hoyoverse.com/*",
     "https://*.hoyolab.com/*",
     "https://*.hoyoverse.com/*"
   ],
@@ -35,7 +38,7 @@
     ]
   },
     "content_security_policy": {
-      "extension_pages": "script-src 'self'; object-src 'self'; frame-src https://www.youtube.com https://www.youtube-nocookie.com; img-src 'self' data: https:; connect-src 'self' https://genshin-feed.com https://www.youtube.com https://www.youtube-nocookie.com https://*.youtubei.googleapis.com https://*.googlevideo.com https://*.ytimg.com https://*.hoyoverse.com https://*.hoyolab.com;"
+      "extension_pages": "script-src 'self'; object-src 'self'; frame-src https://www.youtube.com https://www.youtube-nocookie.com; img-src 'self' data: https:; connect-src 'self' https://genshin-feed.com https://genshin-countdown.gengamer.in https://enka.network https://bbs-api-os.hoyoverse.com https://www.youtube.com https://www.youtube-nocookie.com https://*.youtubei.googleapis.com https://*.googlevideo.com https://*.ytimg.com https://*.hoyoverse.com https://*.hoyolab.com;"
     },
   "action": {
     "default_popup": "popup.html",

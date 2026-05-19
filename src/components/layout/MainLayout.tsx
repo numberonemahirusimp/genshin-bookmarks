@@ -11,6 +11,9 @@ import { NewsFeed } from '../news/NewsFeed'
 import { Bookmark, Folder, Tag, ThemeId } from '../../types'
 import { GenshinAuth } from '../../services/genshinApi'
 import { useWallpaper } from '../../hooks/useWallpaper'
+
+const HISTORY_DOCK_SETTING = 'dock-show-history'
+
 interface MainLayoutProps {
   bookmarks: Bookmark[]
   folders: Folder[]
@@ -65,6 +68,7 @@ export function MainLayout({
 }: MainLayoutProps) {
   const [themeMenuOpen, setThemeMenuOpen] = useState(false)
   const [dockView, setDockView] = useState<DockView>('home')
+  const [showHistoryDock, setShowHistoryDock] = useState(() => readLocalSetting(HISTORY_DOCK_SETTING, true))
   const wallpaper = useWallpaper()
 
   const openWallpaperGallery = useCallback(() => {
@@ -76,6 +80,12 @@ export function MainLayout({
 
   const handleDockChange = useCallback((view: DockView) => {
     setDockView(view)
+  }, [])
+
+  const handleShowHistoryDockChange = useCallback((show: boolean) => {
+    setShowHistoryDock(show)
+    localStorage.setItem(HISTORY_DOCK_SETTING, JSON.stringify(show))
+    if (!show) setDockView(current => current === 'recent' ? 'home' : current)
   }, [])
 
   const totalVisits = bookmarks.reduce((sum, b) => sum + b.visitCount, 0)
@@ -110,6 +120,8 @@ export function MainLayout({
             onThemeChange={onThemeChange}
             isThemeOpen={themeMenuOpen}
             onThemeToggle={() => setThemeMenuOpen(!themeMenuOpen)}
+            showHistoryDock={showHistoryDock}
+            onShowHistoryDockChange={handleShowHistoryDockChange}
             onOpenWidget={() => {}}
           />
         )
@@ -241,7 +253,7 @@ export function MainLayout({
       )}
 
       {/* Content */}
-      <div key={dockView} className="flex-1 overflow-y-auto" onClick={() => setThemeMenuOpen(false)}>
+      <div key={dockView} className="archive-content-scroll flex-1 overflow-y-auto" onClick={() => setThemeMenuOpen(false)}>
         {renderContent()}
       </div>
 
@@ -251,6 +263,7 @@ export function MainLayout({
         onViewChange={handleDockChange}
         hasGenshinAuth={!!genshinAuth}
         themeId={activeTheme}
+        showHistory={showHistoryDock}
       />
 
       {/* Floating wallpaper button */}
@@ -289,6 +302,15 @@ export function MainLayout({
       />
     </div>
   )
+}
+
+function readLocalSetting<T>(key: string, fallback: T): T {
+  try {
+    const raw = localStorage.getItem(key)
+    return raw ? JSON.parse(raw) : fallback
+  } catch {
+    return fallback
+  }
 }
 
 function WallpaperBackdrop({ url, opacity }: { url: string; opacity: number }) {

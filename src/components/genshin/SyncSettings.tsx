@@ -26,8 +26,14 @@ export function SyncSettings({ auth, onAuthChange }: SyncSettingsProps) {
   async function handleDetect() {
     setDetecting(true); setTestResult('idle')
     const cookies = await getAuthFromCookies()
-    if (cookies) { setLtuid(cookies.ltuid); setLtoken(cookies.ltoken); setUid(cookies.uid); setTestMsg('Tokens detected!'); setTestResult('success') }
-    else { setTestMsg('Not logged into Hoyolab. Try manually.'); setTestResult('error') }
+    if (cookies) {
+      setLtuid(cookies.ltuid)
+      setLtoken(cookies.ltoken)
+      setUid(cookies.uid)
+      setTestMsg(cookies.uid ? 'Tokens and UID detected!' : 'Tokens detected. Add your in-game UID, then save.')
+      setTestResult(cookies.uid ? 'success' : 'error')
+    }
+    else { setTestMsg('Not logged into Hoyolab in this browser, or the extension needs to be reloaded.'); setTestResult('error') }
     setDetecting(false)
   }
 
@@ -42,7 +48,16 @@ export function SyncSettings({ auth, onAuthChange }: SyncSettingsProps) {
 
   async function handleSave() {
     const cookies = await getAuthFromCookies()
-    const newAuth: GenshinAuth = { ltuid, ltoken, uid, ltoken_v2: cookies?.ltoken_v2 || undefined, ltuid_v2: cookies?.ltuid_v2 || undefined }
+    const newAuth: GenshinAuth = {
+      ltuid,
+      ltoken,
+      uid,
+      ltoken_v2: cookies?.ltoken_v2 || undefined,
+      ltuid_v2: cookies?.ltuid_v2 || undefined,
+      account_id_v2: cookies?.account_id_v2 || undefined,
+      cookie_token_v2: cookies?.cookie_token_v2 || undefined,
+      stoken_v2: cookies?.stoken_v2 || undefined,
+    }
     await db.setSetting('genshinAuth', newAuth)
     onAuthChange(newAuth)
     setTestResult('success'); setTestMsg('Credentials saved.')

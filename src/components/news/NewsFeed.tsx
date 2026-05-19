@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { motion } from 'framer-motion'
-import { ExternalLink, Search, Sparkles, Video } from '../ui/Icons'
+import { Clock, ExternalLink, Sparkles, Video } from '../ui/Icons'
 import { buildYouTubeEmbedUrl, youtubeEmbedModes, YouTubeEmbedMode } from '../../utils/youtube'
 
 interface FeedArticle {
@@ -21,6 +21,14 @@ interface FeedVideo {
   channel: string
 }
 
+interface BannerCountdown {
+  title: string
+  subtitle: string
+  releaseText: string
+  image: string
+  source: string
+}
+
 const articleFeeds = [
   { category: 'News' as const, url: 'https://genshin-feed.com/feeds/en/rss/all.xml' },
   { category: 'Update' as const, url: 'https://genshin-feed.com/feeds/en/rss/updates.xml' },
@@ -28,6 +36,8 @@ const articleFeeds = [
 ]
 
 const officialVideoFeed = 'https://www.youtube.com/feeds/videos.xml?channel_id=UCiS882YPwZt1NfaM0gR0D9Q'
+const bannerCountdownUrl = 'https://genshin-countdown.gengamer.in/'
+const upcomingBannerUrl = 'https://genshin-countdown.gengamer.in/upcoming/'
 
 const creatorVideoFeeds = [
   { channel: 'Zy0x', url: 'https://www.youtube.com/feeds/videos.xml?channel_id=UClYObD5y2ZSAcFhEtg_ATnw' },
@@ -101,18 +111,13 @@ const fallbackVideos: FeedVideo[] = [
   },
 ]
 
-const trendSearches = [
-  'zyox genshin impact',
-  'sevyplays genshin impact',
-  'gacha gamer genshin impact',
-  'taka gg genshin impact',
-  'xlice genshin impact',
-  'genshin impact new update',
-  'genshin impact version trailer',
-  'genshin impact event guide',
-  'genshin impact character demo',
-  'genshin impact spiral abyss',
-]
+const fallbackBannerCountdown: BannerCountdown = {
+  title: 'Genshin Banner Countdown',
+  subtitle: 'Current and upcoming wish timers',
+  releaseText: 'Open the live tracker for the latest server timers.',
+  image: 'https://genshin-countdown.gengamer.in/wp-content/uploads/Picsart_26-03-19_12-46-16-538.webp',
+  source: bannerCountdownUrl,
+}
 
 const quickRoutes = [
   { label: 'Official News', href: 'https://genshin.hoyoverse.com/en/news' },
@@ -124,20 +129,22 @@ const quickRoutes = [
 export function NewsFeed() {
   const [articles, setArticles] = useState<FeedArticle[]>([])
   const [videos, setVideos] = useState<FeedVideo[]>([])
+  const [bannerCountdown, setBannerCountdown] = useState<BannerCountdown>(fallbackBannerCountdown)
   const [seed] = useState(() => Date.now())
-  const [activeSearch, setActiveSearch] = useState(trendSearches[0])
   const [embedMode, setEmbedMode] = useState<YouTubeEmbedMode>('standard')
 
   useEffect(() => {
     let cancelled = false
     async function load() {
-      const [nextArticles, nextVideos] = await Promise.all([
+      const [nextArticles, nextVideos, nextBannerCountdown] = await Promise.all([
         loadArticles(),
         loadVideos(),
+        loadBannerCountdown(),
       ])
       if (cancelled) return
       setArticles(nextArticles.length ? nextArticles : fallbackArticles)
       setVideos(nextVideos.length ? nextVideos : fallbackVideos)
+      setBannerCountdown(nextBannerCountdown)
     }
     load()
     return () => { cancelled = true }
@@ -148,7 +155,7 @@ export function NewsFeed() {
   const sideArticles = mixedArticles.slice(1, 5)
   const storyCards = mixedArticles.slice(5)
   const featuredVideo = videos[0] || fallbackVideos[0]
-  const otherVideos = videos.slice(1, 11)
+  const otherVideos = videos.slice(1, 7)
 
   return (
     <main className="feed-page">
@@ -191,6 +198,7 @@ export function NewsFeed() {
       </section>
 
       <section className="feed-layout">
+        <div className="feed-main-column">
         <motion.div
           className="feed-feature archive-card"
           initial={{ opacity: 0, y: 16 }}
@@ -233,6 +241,43 @@ export function NewsFeed() {
           </div>
         </div>
 
+        <section className="banner-panel archive-card">
+          <div className="feed-section-title">
+            <Clock size={16} />
+            Banner Watch
+          </div>
+          <div className="banner-watch-grid">
+            <a
+              className="banner-watch-card banner-watch-card-main"
+              href={bannerCountdown.source}
+              target="_blank"
+              rel="noreferrer"
+              style={{ '--banner-image': `url(${bannerCountdown.image})` } as CSSProperties}
+            >
+              <span>Current Countdown</span>
+              <strong>{bannerCountdown.title}</strong>
+              <small>{bannerCountdown.releaseText}</small>
+            </a>
+            <div className="banner-watch-card">
+              <span>Server Timers</span>
+              <strong>Asia · Europe · America</strong>
+              <small>{bannerCountdown.subtitle}</small>
+              <div className="banner-watch-pills">
+                <span>Asia</span>
+                <span>Europe</span>
+                <span>America</span>
+              </div>
+            </div>
+            <a className="banner-watch-link" href={bannerCountdownUrl} target="_blank" rel="noreferrer">
+              View banners <ExternalLink size={13} />
+            </a>
+            <a className="banner-watch-link" href={upcomingBannerUrl} target="_blank" rel="noreferrer">
+              Upcoming <ExternalLink size={13} />
+            </a>
+          </div>
+        </section>
+        </div>
+
         <section className="video-panel archive-card">
           <div className="feed-section-title">
             <Video size={16} />
@@ -243,33 +288,6 @@ export function NewsFeed() {
           <div className="video-strip">
             {otherVideos.map(video => <VideoPreview key={video.id} video={video} mode={embedMode} />)}
           </div>
-        </section>
-
-        <section className="trend-panel archive-card">
-          <div className="feed-section-title">
-            <Search size={16} />
-            Trending Searches
-          </div>
-          <div className="trend-searches">
-            {trendSearches.map(query => (
-              <button
-                key={query}
-                className={activeSearch === query ? 'active' : ''}
-                onClick={() => setActiveSearch(query)}
-                type="button"
-              >
-                {query.replace('genshin impact ', '')}
-              </button>
-            ))}
-          </div>
-          <a
-            className="trend-open"
-            href={`https://www.youtube.com/results?search_query=${encodeURIComponent(activeSearch)}`}
-            target="_blank"
-            rel="noreferrer"
-          >
-            Open YouTube results <ExternalLink size={14} />
-          </a>
         </section>
 
         <section className="story-grid">
@@ -376,6 +394,27 @@ async function loadVideos(): Promise<FeedVideo[]> {
   return [...unique.values()].sort((a, b) => Date.parse(b.date) - Date.parse(a.date)).slice(0, 12)
 }
 
+async function loadBannerCountdown(): Promise<BannerCountdown> {
+  const html = await fetchText(bannerCountdownUrl)
+  if (!html) return fallbackBannerCountdown
+
+  const doc = new DOMParser().parseFromString(html, 'text/html')
+  const title = metaContent(doc, 'og:title') || doc.querySelector('title')?.textContent || fallbackBannerCountdown.title
+  const subtitle = doc.querySelector('h2')?.textContent?.trim() || metaContent(doc, 'description') || fallbackBannerCountdown.subtitle
+  const releaseText = [...doc.querySelectorAll('p')]
+    .map(item => item.textContent?.replace(/\s+/g, ' ').trim() || '')
+    .find(item => /set to release|release/i.test(item)) || fallbackBannerCountdown.releaseText
+  const image = metaContent(doc, 'og:image') || metaContent(doc, 'twitter:image') || fallbackBannerCountdown.image
+
+  return {
+    title: title.replace(/\s*Countdown\s*$/i, '').trim(),
+    subtitle: subtitle.replace(/\s+/g, ' ').trim(),
+    releaseText,
+    image,
+    source: bannerCountdownUrl,
+  }
+}
+
 async function loadVideoFeed(url: string, fallbackChannel: string): Promise<FeedVideo[]> {
   const xml = await fetchText(url)
   if (!xml) return []
@@ -416,6 +455,12 @@ function parseRssItems(xml: string): Omit<FeedArticle, 'id' | 'category'>[] {
 
 function text(parent: Element, selector: string): string {
   return parent.querySelector(selector)?.textContent?.trim() || ''
+}
+
+function metaContent(doc: Document, key: string): string {
+  return doc.querySelector(`meta[property="${key}"]`)?.getAttribute('content')
+    || doc.querySelector(`meta[name="${key}"]`)?.getAttribute('content')
+    || ''
 }
 
 function xmlText(parent: Element, localName: string): string {
