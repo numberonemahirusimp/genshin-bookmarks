@@ -23,6 +23,11 @@ interface ArchiveCharacter {
   rarity: number
   image?: string
   icon?: string
+  region?: string
+  arkhe?: string
+  model?: string
+  releaseVersion?: string
+  title?: string
   level?: number
   constellation?: number
   owned?: boolean
@@ -33,6 +38,27 @@ interface ArchiveCharacter {
 }
 
 const hoyolabCharacterArchiveUrl = 'https://act.hoyolab.com/app/community-game-records-sea/index.html?bbs_presentation_style=fullscreen&bbs_auth_required=true&gid=2&user_id=10681574&bbs_theme=dark&bbs_theme_device=1#/ys/role/all?role_id=800099194&server=os_asia'
+const genshinWikiBaseUrl = 'https://genshin-impact.fandom.com/wiki'
+
+const characterSplashAssetNames: Record<string, string> = {
+  Aether: 'PlayerBoy',
+  Lumine: 'PlayerGirl',
+  Traveler: 'PlayerBoy',
+  'Arataki Itto': 'Itto',
+  'Kaedehara Kazuha': 'Kazuha',
+  'Kamisato Ayaka': 'Ayaka',
+  'Kamisato Ayato': 'Ayato',
+  'Kujou Sara': 'Sara',
+  'Kuki Shinobu': 'Shinobu',
+  'Raiden Shogun': 'Shougun',
+  'Sangonomiya Kokomi': 'Kokomi',
+  'Shikanoin Heizou': 'Heizo',
+  'Yae Miko': 'Yae',
+  'Hu Tao': 'Hutao',
+  'Yun Jin': 'Yunjin',
+  'Lan Yan': 'Lanyan',
+  'Yumemizuki Mizuki': 'Mizuki',
+}
 
 const characterIconUrls: Record<string, string> = {
   'Aether': 'https://static.wikia.nocookie.net/gensin-impact/images/a/a5/Aether_Icon.png/revision/latest?cb=20260208041908',
@@ -277,6 +303,7 @@ const fallbackArchiveCharacters: ArchiveCharacter[] = [
 ].map(character => ({
   id: character.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''),
   icon: characterIconUrls[character.name] || characterIconUrls.Unknown,
+  image: getCharacterSplashArtUrl(character.name),
   ...character,
 }))
 
@@ -364,7 +391,7 @@ export function GenshinDashboard({ auth, onAuthChange }: GenshinDashboardProps) 
       element: character.element || 'Unknown',
       weapon: 'All',
       rarity: character.rarity || 5,
-      image: character.image,
+      image: character.image || getCharacterSplashArtUrl(character.name),
       icon: character.icon || characterIconUrls[character.name] || characterIconUrls.Unknown,
       level: character.level,
       constellation: character.constellation,
@@ -376,11 +403,15 @@ export function GenshinDashboard({ auth, onAuthChange }: GenshinDashboardProps) 
   }, [characters])
   const rosterCharacters = useMemo(() => {
     if (showAccountRoster && accountCharacters.length) return accountCharacters
-    const ownedNames = new Set(accountCharacters.map(character => character.name))
+    const accountByName = new Map(accountCharacters.map(character => [character.name, character]))
     return fallbackArchiveCharacters.map(character => ({
       ...character,
-      owned: ownedNames.has(character.name),
-      build: accountCharacters.find(owned => owned.name === character.name)?.build,
+      image: accountByName.get(character.name)?.image || character.image || getCharacterSplashArtUrl(character.name),
+      icon: character.icon || accountByName.get(character.name)?.icon,
+      owned: accountByName.has(character.name),
+      build: undefined,
+      source: undefined,
+      buildAvailable: false,
     }))
   }, [accountCharacters, showAccountRoster])
 
@@ -550,7 +581,10 @@ export function GenshinDashboard({ auth, onAuthChange }: GenshinDashboardProps) 
           characters={rosterCharacters}
           synced={characters.length > 0}
           showAccountRoster={showAccountRoster}
-          onModeChange={setShowAccountRoster}
+          onModeChange={(nextMode) => {
+            setSelectedCharacter(null)
+            setShowAccountRoster(nextMode)
+          }}
           onAccountRequest={() => syncAccountData()}
           loading={loading}
           syncMessage={syncMessage}
@@ -706,7 +740,7 @@ function CharacterArchive({
             </div>
             <div className="character-name">{character.name}</div>
             <div className="character-meta">
-              {character.owned ? `Lv. ${character.level || 1} · C${character.constellation || 0}` : character.weapon}
+              {showAccountRoster && character.owned ? `Lv. ${character.level || 1} / C${character.constellation || 0}` : character.weapon}
             </div>
             {character.isNew && <span className="character-new">New</span>}
           </button>
@@ -714,7 +748,11 @@ function CharacterArchive({
       </div>
 
       {selectedCharacter && (
-        <CompactCharacterBuildMenu character={selectedCharacter} onClose={() => onSelectCharacter(null)} />
+        showAccountRoster ? (
+          <CompactCharacterBuildMenu character={selectedCharacter} onClose={() => onSelectCharacter(null)} />
+        ) : (
+          <CharacterInfoMenu character={selectedCharacter} onClose={() => onSelectCharacter(null)} />
+        )
       )}
 
       <div className="character-archive-footer">
@@ -726,6 +764,81 @@ function CharacterArchive({
         <span />
       </div>
     </section>
+  )
+}
+
+function CharacterInfoMenu({ character, onClose }: { character: ArchiveCharacter; onClose: () => void }) {
+  const splashArt = character.image || getCharacterSplashArtUrl(character.name)
+  const portraitArt = splashArt || character.icon
+  const wikiUrl = getWikiCharacterPageUrl(character.name)
+  const details = [
+    { label: 'Element', value: character.element },
+    { label: 'Weapon', value: character.weapon },
+    { label: 'Rarity', value: `${character.rarity || 5}-Star` },
+    { label: 'Region', value: character.region || inferCharacterRegion(character.name) || 'See Wiki' },
+    { label: 'Release', value: character.releaseVersion || 'See Wiki' },
+    { label: 'Type', value: character.model || 'Playable Character' },
+  ]
+
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [onClose])
+
+  return createPortal(
+    <div className="character-build-overlay" role="dialog" aria-modal="true" onMouseDown={onClose}>
+      <div className="character-build-panel character-build-panel-compact character-info-panel" onMouseDown={event => event.stopPropagation()}>
+        <div className={`character-build-art ${splashArt ? 'has-splash' : 'is-icon'}`}>
+          {portraitArt && <img src={portraitArt} alt={character.name} />}
+          <div className="character-build-fade" />
+          <button className="character-build-close" onClick={onClose} type="button">Close</button>
+          <div className="character-build-friendship">Character Archive</div>
+        </div>
+
+        <div className="character-build-info character-build-info-compact">
+          <div className="character-build-heading">
+            <div className="character-build-element" style={{ '--character-element': archiveElementColors[character.element] || archiveElementColors.Unknown } as React.CSSProperties}>
+              {character.element.slice(0, 1)}
+            </div>
+            <div>
+              <h3>{character.name}</h3>
+              <div className="character-build-stars">
+                {Array.from({ length: character.rarity || 5 }).map((_, index) => <span key={index} />)}
+              </div>
+            </div>
+            <span>{character.weapon}</span>
+          </div>
+
+          <div className="character-info-content">
+            <section className="character-build-section character-info-summary">
+              <div className="character-build-section-title">Character Info</div>
+              <div className="character-info-grid">
+                {details.map(detail => (
+                  <div className="character-info-row" key={detail.label}>
+                    <span>{detail.label}</span>
+                    <strong>{detail.value}</strong>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            <section className="character-build-section character-info-note">
+              <div className="character-build-section-title">Archive Notes</div>
+              <p>
+                General roster details are shown here for the full character archive. Build stats, weapons, and artifacts stay in My Account when HoYoLAB or showcase data is synced.
+              </p>
+              <a href={wikiUrl} target="_blank" rel="noreferrer">
+                Open Genshin Impact Wiki <ExternalLink size={13} />
+              </a>
+            </section>
+          </div>
+        </div>
+      </div>
+    </div>,
+    document.body,
   )
 }
 
@@ -914,6 +1027,76 @@ function CharacterBuildMenu({ character, onClose }: { character: ArchiveCharacte
       </div>
     </div>
   )
+}
+
+function getWikiCharacterPageUrl(name: string): string {
+  return `${genshinWikiBaseUrl}/${encodeURIComponent(name.replace(/ /g, '_'))}`
+}
+
+function getCharacterSplashArtUrl(name: string): string {
+  const assetName = characterSplashAssetNames[name] || name.replace(/[^A-Za-z0-9]/g, '')
+  return `https://enka.network/ui/UI_Gacha_AvatarImg_${assetName}.png`
+}
+
+function inferCharacterRegion(name: string): string {
+  const regions: Record<string, string> = {
+    Albedo: 'Mondstadt',
+    Amber: 'Mondstadt',
+    Barbara: 'Mondstadt',
+    Bennett: 'Mondstadt',
+    Diluc: 'Mondstadt',
+    Diona: 'Mondstadt',
+    Eula: 'Mondstadt',
+    Fischl: 'Mondstadt',
+    Jean: 'Mondstadt',
+    Kaeya: 'Mondstadt',
+    Klee: 'Mondstadt',
+    Lisa: 'Mondstadt',
+    Mika: 'Mondstadt',
+    Mona: 'Mondstadt',
+    Noelle: 'Mondstadt',
+    Razor: 'Mondstadt',
+    Rosaria: 'Mondstadt',
+    Sucrose: 'Mondstadt',
+    Venti: 'Mondstadt',
+    Baizhu: 'Liyue',
+    Beidou: 'Liyue',
+    Chongyun: 'Liyue',
+    Gaming: 'Liyue',
+    Ganyu: 'Liyue',
+    'Hu Tao': 'Liyue',
+    Keqing: 'Liyue',
+    Ningguang: 'Liyue',
+    Qiqi: 'Liyue',
+    Shenhe: 'Liyue',
+    Xiangling: 'Liyue',
+    Xianyun: 'Liyue',
+    Xiao: 'Liyue',
+    Xingqiu: 'Liyue',
+    Xinyan: 'Liyue',
+    Yanfei: 'Liyue',
+    Yaoyao: 'Liyue',
+    Yelan: 'Liyue',
+    'Yun Jin': 'Liyue',
+    Zhongli: 'Liyue',
+    'Arataki Itto': 'Inazuma',
+    Chiori: 'Inazuma',
+    Gorou: 'Inazuma',
+    'Kaedehara Kazuha': 'Inazuma',
+    'Kamisato Ayaka': 'Inazuma',
+    'Kamisato Ayato': 'Inazuma',
+    Kirara: 'Inazuma',
+    'Kujou Sara': 'Inazuma',
+    'Kuki Shinobu': 'Inazuma',
+    'Raiden Shogun': 'Inazuma',
+    'Sangonomiya Kokomi': 'Inazuma',
+    Sayu: 'Inazuma',
+    'Shikanoin Heizou': 'Inazuma',
+    Thoma: 'Inazuma',
+    Wanderer: 'Inazuma',
+    'Yae Miko': 'Inazuma',
+  }
+  return regions[name] || ''
 }
 
 function fallbackStatsFor(character: ArchiveCharacter) {
