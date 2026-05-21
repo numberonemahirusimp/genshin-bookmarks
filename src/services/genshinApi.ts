@@ -171,6 +171,8 @@ function normalizeResin(raw: any): ResinData {
 }
 
 function normalizeCharacter(raw: any): CharacterData {
+  if (raw.base || raw.relics) return normalizeChronicleCharacter(raw)
+
   const weapon = normalizeWeapon(raw.weapon)
   const artifacts = normalizeArtifacts(raw.reliquaries || raw.artifacts)
   const stats = normalizeCharacterStats(raw)
@@ -185,6 +187,30 @@ function normalizeCharacter(raw: any): CharacterData {
     friendship: numberFrom(raw.friendship, raw.fetter),
     constellation: numberFrom(raw.constellation, raw.actived_constellation_num),
     rarity: numberFrom(raw.rarity, raw.rank),
+    weapon,
+    artifacts,
+    stats,
+    source: 'hoyolab',
+    buildAvailable: Boolean(weapon || artifacts.length || stats.length),
+  }
+}
+
+function normalizeChronicleCharacter(raw: any): CharacterData {
+  const base = raw.base || raw
+  const weapon = normalizeWeapon(raw.weapon)
+  const artifacts = normalizeArtifacts(raw.relics || raw.reliquaries || raw.artifacts)
+  const stats = normalizeChronicleStats(raw)
+
+  return {
+    id: numberFrom(base.id, raw.id, raw.avatar_id),
+    image: stringFrom(base.image, raw.image, raw.card_image, raw.gacha_card),
+    icon: stringFrom(base.icon, raw.icon, raw.side_icon, base.side_icon),
+    name: stringFrom(base.name, raw.name),
+    element: stringFrom(base.element, raw.element),
+    level: numberFrom(base.level, raw.level),
+    friendship: numberFrom(base.fetter, base.friendship, raw.friendship),
+    constellation: numberFrom(base.actived_constellation_num, raw.actived_constellation_num, raw.constellation),
+    rarity: numberFrom(base.rarity, base.rank, raw.rarity, raw.rank),
     weapon,
     artifacts,
     stats,
@@ -214,7 +240,7 @@ function normalizeArtifacts(raw: any): BuildArtifact[] {
     name: stringFrom(artifact.name),
     icon: stringFrom(artifact.icon, artifact.image),
     setName: stringFrom(artifact.set?.name, artifact.set_name),
-    slot: stringFrom(artifact.pos_name, artifact.position, artifact.equip_type) || artifactSlots[index] || 'Artifact',
+    slot: stringFrom(artifact.pos_name, artifact.position, artifact.equip_type) || artifactSlots[numberFrom(artifact.pos) - 1] || artifactSlots[index] || 'Artifact',
     rarity: numberFrom(artifact.rarity, artifact.rank),
     level: numberFrom(artifact.level),
     mainStat: stringFrom(artifact.main_property?.property_name, artifact.mainProperty?.name),
@@ -224,6 +250,19 @@ function normalizeArtifacts(raw: any): BuildArtifact[] {
       value: stringFrom(stat.value),
     })),
   }))
+}
+
+function normalizeChronicleStats(raw: any): CharacterStat[] {
+  const properties = raw.properties || raw.base_properties || []
+  if (Array.isArray(properties) && properties.length) return normalizeCharacterStats(raw)
+
+  const base = raw.base || raw
+  return [
+    { label: 'Element', value: stringFrom(base.element, raw.element) },
+    { label: 'Level', value: stringFrom(base.level, raw.level) },
+    { label: 'Constellation', value: `C${numberFrom(base.actived_constellation_num, raw.actived_constellation_num, raw.constellation)}` },
+    { label: 'Friendship', value: stringFrom(base.fetter, base.friendship, raw.friendship) || '--' },
+  ].filter(stat => stat.value)
 }
 
 function normalizeCharacterStats(raw: any): CharacterStat[] {
@@ -311,17 +350,21 @@ export async function fetchCharacters(auth: GenshinAuth): Promise<CharacterData[
   try {
     const server = detectServer(auth.uid)
 
-    const indexRes = await fetch(
-      `${BASE_URL}/index?server=${server}&role_id=${auth.uid}`,
-      withHoyolabCredentials({ headers: getHeaders(auth) })
+    const listRes = await fetch(
+      `${BASE_URL}/character/list`,
+      withHoyolabCredentials({
+        method: 'POST',
+        headers: getJsonHeaders(auth),
+        body: JSON.stringify({ role_id: auth.uid, server, game_biz: 'hk4e_global' }),
+      })
     )
-    const indexJson: { retcode: number; message: string; data?: { avatars?: { id: number }[] } } = await indexRes.json()
-    if (indexJson.retcode !== 0 || !indexJson.data?.avatars) {
-      console.warn('Hoyolab API error fetching avatar IDs:', indexJson.message)
-      const ids = [10000002, 10000003, 10000005, 10000006, 10000007, 10000014, 10000015, 10000016]
-      return fetchCharacterDetails(auth, server, ids)
+    const listJson: { retcode: number; message: string; data?: { list?: { id: number }[]; avatars?: { id: number }[] } } = await listRes.json()
+    const listedCharacters = listJson.data?.list || listJson.data?.avatars || []
+    if (listJson.retcode !== 0 || !listedCharacters.length) {
+      console.warn('Hoyolab API error fetching character list:', listJson.message, 'retcode:', listJson.retcode)
+      return null
     }
-    const characterIds = indexJson.data.avatars.map(a => a.id)
+    const characterIds = listedCharacters.map(a => a.id).filter(Boolean)
     return fetchCharacterDetails(auth, server, characterIds)
   } catch (err) {
     console.error('Failed to fetch characters:', err)
@@ -332,23 +375,30 @@ export async function fetchCharacters(auth: GenshinAuth): Promise<CharacterData[
 async function fetchCharacterDetails(auth: GenshinAuth, server: string, characterIds: number[]): Promise<CharacterData[] | null> {
   try {
     const res = await fetch(
-      `${BASE_URL}/character`,
-      {
+      `${BASE_URL}/character/detail`,
+      withHoyolabCredentials({
         method: 'POST',
-        headers: { ...getHeaders(auth), 'Content-Type': 'application/json' },
-        body: JSON.stringify({ character_ids: characterIds, role_id: auth.uid, server }),
-        credentials: 'include',
-      }
+        headers: getJsonHeaders(auth),
+        body: JSON.stringify({ character_ids: characterIds, role_id: auth.uid, server, game_biz: 'hk4e_global' }),
+      })
     )
-    const json: { retcode: number; message: string; data?: { avatars?: any[] } } = await res.json()
+    const json: { retcode: number; message: string; data?: { avatars?: any[]; list?: any[] } } = await res.json()
     if (json.retcode !== 0) {
       console.warn('Hoyolab API error:', json.message, 'retcode:', json.retcode)
       return null
     }
-    return (json.data?.avatars ?? []).map(normalizeCharacter)
+    return (json.data?.list ?? json.data?.avatars ?? []).map(normalizeCharacter)
   } catch (err) {
     console.error('Failed to fetch characters:', err)
     return null
+  }
+}
+
+function getJsonHeaders(auth: GenshinAuth): Record<string, string> {
+  return {
+    ...getHeaders(auth),
+    'Content-Type': 'application/json;charset=utf-8',
+    'x-rpc-lang': 'en-us',
   }
 }
 

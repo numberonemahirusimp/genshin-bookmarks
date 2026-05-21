@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Teyvat Archive — Bookmark Manager",
   "short_name": "Teyvat Archive",
-  "version": "1.1.0",
+  "version": "1.1.2",
   "description": "A premium bookmark manager inspired by Genshin Impact's UI. Navigate the web like exploring Teyvat.",
   "author": "Teyvat Archive Team",
   "permissions": [

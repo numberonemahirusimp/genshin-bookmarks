@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import {
   CharacterData, fetchCharacters, fetchEnkaShowcase, fetchResinData, fetchStats,
   getAuthFromCookies,
@@ -286,6 +287,7 @@ export function GenshinDashboard({ auth, onAuthChange }: GenshinDashboardProps) 
   const [loading, setLoading] = useState(false)
   const [detecting, setDetecting] = useState(false)
   const [detectMessage, setDetectMessage] = useState('')
+  const [syncMessage, setSyncMessage] = useState('')
   const [resin, setResin] = useState<ResinData | null>(null)
   const [stats, setStats] = useState<GenshinStats | null>(null)
   const [characters, setCharacters] = useState<CharacterData[]>([])
@@ -294,10 +296,40 @@ export function GenshinDashboard({ auth, onAuthChange }: GenshinDashboardProps) 
   const [manualResin, setManualResin] = useLocalState('genshin-manual-resin', 120)
   const [tasks, setTasks] = useLocalState<Record<string, boolean>>('genshin-task-board', {})
 
+  async function syncAccountData(nextAuth = auth) {
+    if (!nextAuth) return
+    setLoading(true)
+    setSyncMessage('Requesting HoYoLAB roster...')
+    try {
+      const [resinData, statsData, characterData, showcaseData] = await Promise.all([
+        fetchResinData(nextAuth),
+        fetchStats(nextAuth),
+        fetchCharacters(nextAuth),
+        fetchEnkaShowcase(nextAuth.uid),
+      ])
+      const mergedCharacters = mergeCharacterBuilds(characterData || [], showcaseData || [])
+      setResin(resinData)
+      setStats(statsData)
+      setCharacters(mergedCharacters)
+      if (mergedCharacters.length) {
+        setShowAccountRoster(true)
+        setSyncMessage(`Synced ${mergedCharacters.length} owned characters.`)
+      } else {
+        setShowAccountRoster(false)
+        setSyncMessage('HoYoLAB did not return owned characters. Check login/cookies, then try again.')
+      }
+    } catch {
+      setSyncMessage('Could not sync HoYoLAB roster. Check login/cookies, then try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   useEffect(() => {
     if (!auth) return
     let cancelled = false
     setLoading(true)
+    setSyncMessage('Requesting HoYoLAB roster...')
     Promise.all([
       fetchResinData(auth),
       fetchStats(auth),
@@ -309,7 +341,12 @@ export function GenshinDashboard({ auth, onAuthChange }: GenshinDashboardProps) 
       setResin(resinData)
       setStats(statsData)
       setCharacters(mergedCharacters)
-      if (mergedCharacters.length) setShowAccountRoster(true)
+      if (mergedCharacters.length) {
+        setShowAccountRoster(true)
+        setSyncMessage(`Synced ${mergedCharacters.length} owned characters.`)
+      } else {
+        setSyncMessage('HoYoLAB did not return owned characters yet.')
+      }
     }).finally(() => {
       if (!cancelled) setLoading(false)
     })
@@ -512,6 +549,9 @@ export function GenshinDashboard({ auth, onAuthChange }: GenshinDashboardProps) 
           synced={characters.length > 0}
           showAccountRoster={showAccountRoster}
           onModeChange={setShowAccountRoster}
+          onAccountRequest={() => syncAccountData()}
+          loading={loading}
+          syncMessage={syncMessage}
           selectedCharacter={selectedCharacter}
           onSelectCharacter={setSelectedCharacter}
         />
@@ -554,6 +594,9 @@ function CharacterArchive({
   synced,
   showAccountRoster,
   onModeChange,
+  onAccountRequest,
+  loading,
+  syncMessage,
   selectedCharacter,
   onSelectCharacter,
 }: {
@@ -561,6 +604,9 @@ function CharacterArchive({
   synced: boolean
   showAccountRoster: boolean
   onModeChange: (showAccountRoster: boolean) => void
+  onAccountRequest: () => void
+  loading: boolean
+  syncMessage: string
   selectedCharacter: ArchiveCharacter | null
   onSelectCharacter: (character: ArchiveCharacter | null) => void
 }) {
@@ -568,6 +614,15 @@ function CharacterArchive({
   const [weaponFilter, setWeaponFilter] = useState('All')
   const [rarityFilter, setRarityFilter] = useState('All')
   const [query, setQuery] = useState('')
+
+  useEffect(() => {
+    if (!selectedCharacter) return
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = previousOverflow
+    }
+  }, [selectedCharacter])
 
   const elements = ['All', ...Array.from(new Set(characters.map(character => character.element))).filter(Boolean)]
   const weapons = ['All', ...Array.from(new Set(characters.map(character => character.weapon))).filter(Boolean)]
@@ -601,17 +656,24 @@ function CharacterArchive({
           <button
             className="archive-pill ui-sans px-4 text-xs"
             type="button"
-            onClick={() => onModeChange(true)}
-            disabled={!synced}
-            style={{ opacity: synced ? 1 : 0.45, borderColor: showAccountRoster ? 'rgba(229,194,137,0.5)' : 'rgba(229,194,137,0.2)' }}
+            onClick={() => {
+              if (synced) onModeChange(true)
+              else onAccountRequest()
+            }}
+            disabled={loading}
+            style={{ opacity: loading ? 0.55 : 1, borderColor: showAccountRoster ? 'rgba(229,194,137,0.5)' : 'rgba(229,194,137,0.2)' }}
           >
-            My Account
+            {loading ? 'Syncing...' : synced ? 'My Account' : 'Sync Account'}
           </button>
           <a href={hoyolabCharacterArchiveUrl} target="_blank" rel="noreferrer">
             HoYoLAB <ExternalLink size={13} />
           </a>
         </div>
       </div>
+
+      {syncMessage && (
+        <div className="character-sync-message">{syncMessage}</div>
+      )}
 
       <div className="character-archive-controls">
         <ArchiveSelect label="Rarity" value={rarityFilter} onChange={setRarityFilter} options={['All', '5', '4']} />
@@ -650,7 +712,7 @@ function CharacterArchive({
       </div>
 
       {selectedCharacter && (
-        <CharacterBuildMenu character={selectedCharacter} onClose={() => onSelectCharacter(null)} />
+        <CompactCharacterBuildMenu character={selectedCharacter} onClose={() => onSelectCharacter(null)} />
       )}
 
       <div className="character-archive-footer">
@@ -662,6 +724,101 @@ function CharacterArchive({
         <span />
       </div>
     </section>
+  )
+}
+
+function CompactCharacterBuildMenu({ character, onClose }: { character: ArchiveCharacter; onClose: () => void }) {
+  const build = character.build
+  const stats = build?.stats?.length ? build.stats : fallbackStatsFor(character)
+  const artifacts = build?.artifacts || []
+  const weapon = build?.weapon
+
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [onClose])
+
+  return createPortal(
+    <div className="character-build-overlay" role="dialog" aria-modal="true" onMouseDown={onClose}>
+      <div className="character-build-panel character-build-panel-compact" onMouseDown={event => event.stopPropagation()}>
+        <div className="character-build-art is-icon">
+          {character.icon && <img src={character.icon} alt={character.name} />}
+          <div className="character-build-fade" />
+          <button className="character-build-close" onClick={onClose} type="button">Close</button>
+          <div className="character-build-friendship">Friendship Level: {build?.friendship || '--'}</div>
+        </div>
+
+        <div className="character-build-info character-build-info-compact">
+          <div className="character-build-heading">
+            <div className="character-build-element" style={{ '--character-element': archiveElementColors[character.element] || archiveElementColors.Unknown } as React.CSSProperties}>
+              {character.element.slice(0, 1)}
+            </div>
+            <div>
+              <h3>{character.name}</h3>
+              <div className="character-build-stars">
+                {Array.from({ length: character.rarity || 5 }).map((_, index) => <span key={index} />)}
+              </div>
+            </div>
+            <span>Lv. {character.level || build?.level || '--'}</span>
+          </div>
+
+          <div className="character-build-content-grid">
+            <section className="character-build-section character-build-section-stats">
+              <div className="character-build-section-title">Character Stats</div>
+              <div className="character-stat-grid">
+                {stats.map(stat => (
+                  <div className="character-stat-row" key={`${stat.label}-${stat.value}`}>
+                    <span>{stat.label}</span>
+                    <strong>{stat.value}</strong>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            <section className="character-build-section character-build-section-weapon">
+              <div className="character-build-section-title">Weapon</div>
+              {weapon ? (
+                <div className="character-weapon-card">
+                  {weapon.icon && <img src={weapon.icon} alt="" />}
+                  <div>
+                    <h4>{weapon.name}</h4>
+                    <p>Lv. {weapon.level || '--'} / R{weapon.refinement || 1}</p>
+                    {(weapon.subStat || weapon.mainStat) && <p>{weapon.subStat || weapon.mainStat}</p>}
+                  </div>
+                </div>
+              ) : (
+                <p className="character-build-empty">No weapon build data was returned yet.</p>
+              )}
+            </section>
+
+            <section className="character-build-section character-build-section-artifacts">
+              <div className="character-build-section-title">Artifacts</div>
+              {artifacts.length ? (
+                <div className="character-artifact-grid">
+                  {artifacts.map(artifact => (
+                    <div className="character-artifact-card" key={artifact.id}>
+                      {artifact.icon && <img src={artifact.icon} alt="" />}
+                      <div>
+                        <strong>{artifact.slot}</strong>
+                        <span>{artifact.mainStat} {artifact.mainValue}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="character-build-empty">
+                  Builds only appear when HoYoLAB returns equipment data or the character is visible on your public Enka showcase.
+                </p>
+              )}
+            </section>
+          </div>
+        </div>
+      </div>
+    </div>,
+    document.body,
   )
 }
 
