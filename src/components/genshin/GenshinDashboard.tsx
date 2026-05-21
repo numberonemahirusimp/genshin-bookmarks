@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import {
-  CharacterData, fetchCharacters, fetchEnkaShowcase, fetchResinData, fetchStats,
+  CharacterData, CharacterStat, fetchCharacters, fetchEnkaShowcase, fetchResinData, fetchStats,
   getAuthFromCookies,
   GenshinAuth, GenshinStats, ResinData,
 } from '../../services/genshinApi'
@@ -21,6 +21,7 @@ interface ArchiveCharacter {
   element: string
   weapon: string
   rarity: number
+  image?: string
   icon?: string
   level?: number
   constellation?: number
@@ -363,7 +364,8 @@ export function GenshinDashboard({ auth, onAuthChange }: GenshinDashboardProps) 
       element: character.element || 'Unknown',
       weapon: 'All',
       rarity: character.rarity || 5,
-      icon: character.icon || character.image || characterIconUrls[character.name] || characterIconUrls.Unknown,
+      image: character.image,
+      icon: character.icon || characterIconUrls[character.name] || characterIconUrls.Unknown,
       level: character.level,
       constellation: character.constellation,
       owned: true,
@@ -729,9 +731,11 @@ function CharacterArchive({
 
 function CompactCharacterBuildMenu({ character, onClose }: { character: ArchiveCharacter; onClose: () => void }) {
   const build = character.build
-  const stats = build?.stats?.length ? build.stats : fallbackStatsFor(character)
+  const gameStats = getCharacterGameStats(character, build?.stats || [])
   const artifacts = build?.artifacts || []
   const weapon = build?.weapon
+  const splashArt = build?.image || character.image
+  const portraitArt = splashArt || character.icon
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
@@ -744,8 +748,8 @@ function CompactCharacterBuildMenu({ character, onClose }: { character: ArchiveC
   return createPortal(
     <div className="character-build-overlay" role="dialog" aria-modal="true" onMouseDown={onClose}>
       <div className="character-build-panel character-build-panel-compact" onMouseDown={event => event.stopPropagation()}>
-        <div className="character-build-art is-icon">
-          {character.icon && <img src={character.icon} alt={character.name} />}
+        <div className={`character-build-art ${splashArt ? 'has-splash' : 'is-icon'}`}>
+          {portraitArt && <img src={portraitArt} alt={character.name} />}
           <div className="character-build-fade" />
           <button className="character-build-close" onClick={onClose} type="button">Close</button>
           <div className="character-build-friendship">Friendship Level: {build?.friendship || '--'}</div>
@@ -769,10 +773,13 @@ function CompactCharacterBuildMenu({ character, onClose }: { character: ArchiveC
             <section className="character-build-section character-build-section-stats">
               <div className="character-build-section-title">Character Stats</div>
               <div className="character-stat-grid">
-                {stats.map(stat => (
+                {gameStats.map(stat => (
                   <div className="character-stat-row" key={`${stat.label}-${stat.value}`}>
                     <span>{stat.label}</span>
-                    <strong>{stat.value}</strong>
+                    <span className="character-stat-values">
+                      {stat.extra && <small>{stat.extra}</small>}
+                      <strong>{stat.value}</strong>
+                    </span>
                   </div>
                 ))}
               </div>
@@ -824,15 +831,17 @@ function CompactCharacterBuildMenu({ character, onClose }: { character: ArchiveC
 
 function CharacterBuildMenu({ character, onClose }: { character: ArchiveCharacter; onClose: () => void }) {
   const build = character.build
-  const stats = build?.stats?.length ? build.stats : fallbackStatsFor(character)
+  const gameStats = getCharacterGameStats(character, build?.stats || [])
   const artifacts = build?.artifacts || []
   const weapon = build?.weapon
+  const splashArt = build?.image || character.image
+  const portraitArt = splashArt || character.icon
 
   return (
     <div className="character-build-overlay" role="dialog" aria-modal="true">
       <div className="character-build-panel">
-        <div className="character-build-art is-icon">
-          {character.icon && <img src={character.icon} alt={character.name} />}
+        <div className={`character-build-art ${splashArt ? 'has-splash' : 'is-icon'}`}>
+          {portraitArt && <img src={portraitArt} alt={character.name} />}
           <div className="character-build-fade" />
           <button className="character-build-close" onClick={onClose} type="button">Close</button>
           <div className="character-build-friendship">Friendship Level: {build?.friendship || character.build?.friendship || '--'}</div>
@@ -853,10 +862,13 @@ function CharacterBuildMenu({ character, onClose }: { character: ArchiveCharacte
           <section className="character-build-section">
             <div className="character-build-section-title">Character Stats</div>
             <div className="character-stat-grid">
-              {stats.map(stat => (
+              {gameStats.map(stat => (
                 <div className="character-stat-row" key={`${stat.label}-${stat.value}`}>
                   <span>{stat.label}</span>
-                  <strong>{stat.value}</strong>
+                  <span className="character-stat-values">
+                    {stat.extra && <small>{stat.extra}</small>}
+                    <strong>{stat.value}</strong>
+                  </span>
                 </div>
               ))}
             </div>
@@ -911,6 +923,80 @@ function fallbackStatsFor(character: ArchiveCharacter) {
     { label: 'Constellation', value: character.owned ? `C${character.constellation || 0}` : 'Not synced' },
     { label: 'Build Source', value: character.source === 'enka' ? 'Enka showcase' : character.buildAvailable ? 'HoYoLAB' : 'Unavailable' },
   ]
+}
+
+const baseGameStatLabels = ['Max HP', 'ATK', 'DEF', 'Elemental Mastery']
+const rightGameStatLabels = ['CRIT Rate', 'CRIT DMG', 'Healing Bonus', 'Incoming Healing Bonus', 'Energy Recharge']
+
+function getCharacterGameStats(character: ArchiveCharacter, stats: CharacterStat[]): CharacterStat[] {
+  const elementBonusLabel = `${character.element || 'Elemental'} DMG Bonus`
+  const preferredLabels = [...baseGameStatLabels, elementBonusLabel, ...rightGameStatLabels]
+  const foundStats = preferredLabels
+    .map(label => {
+      const stat = findCharacterStat(stats, label)
+      return stat ? formatCharacterStat({ ...stat, label }) : { label, value: '--' }
+    })
+
+  if (stats.some(stat => isCombatStat(stat.label))) return foundStats
+
+  const existingKeys = new Set(foundStats.map(stat => normalizeStatLabel(stat.label)))
+  const remainingStats = stats
+    .filter(stat => !existingKeys.has(normalizeStatLabel(stat.label)))
+    .map(formatCharacterStat)
+
+  return [...foundStats, ...remainingStats]
+}
+
+function findCharacterStat(stats: CharacterStat[], preferredLabel: string): CharacterStat | undefined {
+  const preferredKey = normalizeStatLabel(preferredLabel)
+  return stats.find(stat => {
+    const key = normalizeStatLabel(stat.label)
+    if (key === preferredKey) return true
+    if (preferredKey.endsWith('DMGBONUS') && key.endsWith('DMGBONUS') && !key.includes('PHYSICAL')) return true
+    return false
+  })
+}
+
+function normalizeStatLabel(label: string): string {
+  return label.toUpperCase().replace(/[^A-Z0-9]/g, '')
+}
+
+function formatCharacterStat(stat: CharacterStat): CharacterStat {
+  return {
+    ...stat,
+    value: formatStatNumber(stat.value, stat.label),
+    extra: stat.extra ? formatStatBonus(stat.extra, stat.label) : undefined,
+  }
+}
+
+function formatStatBonus(value: string, label: string): string {
+  const formatted = formatStatNumber(value, label)
+  if (!formatted || formatted === '0' || formatted === '0.0%' || formatted.startsWith('+')) return formatted
+  return `+${formatted}`
+}
+
+function formatStatNumber(value: string, label: string): string {
+  if (!value) return value
+  if (value.includes('%')) return value
+  const numeric = Number(value)
+  if (!Number.isFinite(numeric)) return value
+
+  if (isPercentStat(label)) {
+    const percent = Math.abs(numeric) <= 5 ? numeric * 100 : numeric
+    return `${percent.toFixed(1)}%`
+  }
+
+  return Number.isInteger(numeric) ? String(numeric) : numeric.toFixed(0)
+}
+
+function isPercentStat(label: string): boolean {
+  const key = normalizeStatLabel(label)
+  return key.includes('CRIT') || key.includes('BONUS') || key.includes('RECHARGE')
+}
+
+function isCombatStat(label: string): boolean {
+  const key = normalizeStatLabel(label)
+  return [...baseGameStatLabels, ...rightGameStatLabels, 'DMGBONUS'].some(statKey => key.includes(normalizeStatLabel(statKey)))
 }
 
 function ArchiveSelect({ label, value, options, onChange }: { label: string; value: string; options: string[]; onChange: (value: string) => void }) {

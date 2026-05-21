@@ -179,8 +179,8 @@ function normalizeCharacter(raw: any): CharacterData {
 
   return {
     id: numberFrom(raw.id, raw.avatar_id),
-    image: stringFrom(raw.image, raw.card_image, raw.gacha_card),
-    icon: stringFrom(raw.icon, raw.image, raw.side_icon),
+    image: stringFrom(raw.image, raw.card_image, raw.gacha_card, raw.cover, raw.full_image),
+    icon: stringFrom(raw.icon, raw.side_icon),
     name: stringFrom(raw.name),
     element: stringFrom(raw.element),
     level: numberFrom(raw.level),
@@ -203,7 +203,7 @@ function normalizeChronicleCharacter(raw: any): CharacterData {
 
   return {
     id: numberFrom(base.id, raw.id, raw.avatar_id),
-    image: stringFrom(base.image, raw.image, raw.card_image, raw.gacha_card),
+    image: stringFrom(base.image, raw.image, raw.card_image, raw.gacha_card, raw.cover, base.cover, raw.full_image),
     icon: stringFrom(base.icon, raw.icon, raw.side_icon, base.side_icon),
     name: stringFrom(base.name, raw.name),
     element: stringFrom(base.element, raw.element),
@@ -266,13 +266,83 @@ function normalizeChronicleStats(raw: any): CharacterStat[] {
 }
 
 function normalizeCharacterStats(raw: any): CharacterStat[] {
-  const properties = raw.properties || raw.base_properties || []
-  if (!Array.isArray(properties)) return []
+  const properties = collectCharacterStatProperties(raw)
   return properties.map((stat: any) => ({
-    label: stringFrom(stat.property_name, stat.name),
-    value: stringFrom(stat.final, stat.value, stat.base),
-    extra: stringFrom(stat.add, stat.extra),
+    label: normalizePropertyLabel(stringFrom(stat.property_name, stat.name, stat.name_text, stat.type_name, stat.key, stat.label)),
+    value: stringFrom(stat.final, stat.value, stat.val, stat.base, stat.final_value),
+    extra: stringFrom(stat.add, stat.extra, stat.add_value, stat.plus, stat.delta),
   })).filter((stat: CharacterStat) => stat.label && stat.value)
+}
+
+function collectCharacterStatProperties(raw: any): any[] {
+  const fightPropMap = raw?.fightPropMap || raw?.fight_prop_map || raw?.fightProps
+  if (fightPropMap && typeof fightPropMap === 'object' && !Array.isArray(fightPropMap)) return normalizeEnkaStats(fightPropMap)
+
+  const directProperties = [
+    raw?.properties,
+    raw?.base_properties,
+    raw?.selected_properties,
+    raw?.property_list,
+    raw?.fight_props,
+    raw?.base?.properties,
+    raw?.base?.base_properties,
+    raw?.base?.selected_properties,
+  ]
+
+  const found = directProperties.find(value => Array.isArray(value) && value.length)
+  if (found) return found
+
+  const scanned = findStatPropertyArray(raw)
+  return scanned || []
+}
+
+function findStatPropertyArray(value: any, depth = 0): any[] | null {
+  if (!value || typeof value !== 'object' || depth > 3) return null
+  if (Array.isArray(value)) {
+    if (value.some(isStatPropertyLike)) return value
+    for (const item of value) {
+      const found = findStatPropertyArray(item, depth + 1)
+      if (found) return found
+    }
+    return null
+  }
+
+  for (const nested of Object.values(value)) {
+    const found = findStatPropertyArray(nested, depth + 1)
+    if (found) return found
+  }
+  return null
+}
+
+function isStatPropertyLike(value: any): boolean {
+  if (!value || typeof value !== 'object') return false
+  const label = stringFrom(value.property_name, value.name, value.name_text, value.type_name, value.key, value.label)
+  const statValue = stringFrom(value.final, value.value, value.val, value.base, value.final_value)
+  return Boolean(label && statValue)
+}
+
+function normalizePropertyLabel(label: string): string {
+  const key = label.toUpperCase().replace(/[^A-Z0-9]/g, '')
+  const aliases: Record<string, string> = {
+    FIGHTPROPHP: 'Max HP',
+    FIGHTPROPATTACK: 'ATK',
+    FIGHTPROPDEFENSE: 'DEF',
+    FIGHTPROPELEMENTMASTERY: 'Elemental Mastery',
+    FIGHTPROPCRITICAL: 'CRIT Rate',
+    FIGHTPROPCRITICALHURT: 'CRIT DMG',
+    FIGHTPROPHEALADD: 'Healing Bonus',
+    FIGHTPROPHEALEDADD: 'Incoming Healing Bonus',
+    FIGHTPROPCHARGEEFFICIENCY: 'Energy Recharge',
+    FIGHTPROPFIRESUBHURT: 'Pyro DMG Bonus',
+    FIGHTPROPELECSUBHURT: 'Electro DMG Bonus',
+    FIGHTPROPWATERSUBHURT: 'Hydro DMG Bonus',
+    FIGHTPROPGRASSSUBHURT: 'Dendro DMG Bonus',
+    FIGHTPROPWINDSUBHURT: 'Anemo DMG Bonus',
+    FIGHTPROPROCKSUBHURT: 'Geo DMG Bonus',
+    FIGHTPROPICESUBHURT: 'Cryo DMG Bonus',
+    FIGHTPROPPHYSICALSUBHURT: 'Physical DMG Bonus',
+  }
+  return aliases[key] || label
 }
 
 const artifactSlots = ['Flower', 'Plume', 'Sands', 'Goblet', 'Circlet']
@@ -548,6 +618,7 @@ function normalizeEnkaCharacter(raw: any): CharacterData {
   const name = stringFrom(raw.nameTextMapHash) || `Character ${id}`
   const weaponRaw = (raw.equipList || []).find((item: any) => item.weapon)
   const artifactRaw = (raw.equipList || []).filter((item: any) => item.reliquary)
+  const stats = normalizeEnkaStats(raw.fightPropMap)
   return {
     id,
     image: '',
@@ -580,10 +651,45 @@ function normalizeEnkaCharacter(raw: any): CharacterData {
         value: String(numberFrom(stat.statValue)),
       })),
     })),
-    stats: [],
+    stats,
     source: 'enka',
     buildAvailable: true,
   }
+}
+
+function normalizeEnkaStats(raw: any): CharacterStat[] {
+  if (!raw || typeof raw !== 'object') return []
+
+  const statMap: [string, string, boolean][] = [
+    ['Max HP', '2000', false],
+    ['ATK', '2001', false],
+    ['DEF', '2002', false],
+    ['Elemental Mastery', '28', false],
+    ['CRIT Rate', '20', true],
+    ['CRIT DMG', '22', true],
+    ['Healing Bonus', '26', true],
+    ['Incoming Healing Bonus', '27', true],
+    ['Energy Recharge', '23', true],
+    ['Pyro DMG Bonus', '40', true],
+    ['Electro DMG Bonus', '41', true],
+    ['Hydro DMG Bonus', '42', true],
+    ['Dendro DMG Bonus', '43', true],
+    ['Anemo DMG Bonus', '44', true],
+    ['Geo DMG Bonus', '45', true],
+    ['Cryo DMG Bonus', '46', true],
+    ['Physical DMG Bonus', '30', true],
+  ]
+
+  return statMap
+    .map(([label, key, percent]) => {
+      const value = numberFrom(raw[key])
+      if (!value) return null
+      return {
+        label,
+        value: percent ? `${(value * 100).toFixed(1)}%` : String(Math.round(value)),
+      }
+    })
+    .filter((stat): stat is CharacterStat => Boolean(stat))
 }
 
 function enkaIconUrl(icon: string): string {
