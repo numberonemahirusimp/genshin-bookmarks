@@ -1257,6 +1257,13 @@
     max-height: min(116%, calc(92dvh - 104px));
   }
 
+  .character-build-art.traveler-art.has-splash img {
+    width: min(142%, 660px);
+    max-height: min(108%, calc(92dvh - 124px));
+    object-position: center center;
+    transform: translateY(-9%);
+  }
+
   .character-build-fade {
     position: absolute;
     inset: 0;
@@ -1641,6 +1648,12 @@
       max-height: min(112%, calc(92dvh - 112px));
     }
 
+    .character-build-art.traveler-art.has-splash img {
+      width: min(136%, 520px);
+      max-height: min(106%, calc(92dvh - 126px));
+      transform: translateY(-7%);
+    }
+
     .character-build-content-grid {
       gap: 8px;
     }
@@ -1664,6 +1677,12 @@
     .character-build-art.has-splash img {
       width: min(112%, 420px);
       max-height: 116%;
+    }
+
+    .character-build-art.traveler-art.has-splash img {
+      width: min(104%, 390px);
+      max-height: 106%;
+      transform: translateY(-5%);
     }
 
     .character-build-info,

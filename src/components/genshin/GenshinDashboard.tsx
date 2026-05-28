@@ -22,6 +22,7 @@ interface ArchiveCharacter {
   weapon: string
   rarity: number
   image?: string
+  artClass?: string
   icon?: string
   region?: string
   arkhe?: string
@@ -44,16 +45,28 @@ const characterSplashAssetNames: Record<string, string> = {
   Aether: 'PlayerBoy',
   Lumine: 'PlayerGirl',
   Traveler: 'PlayerBoy',
+  Alhaitham: 'Alhatham',
+  Amber: 'Ambor',
   'Arataki Itto': 'Itto',
+  Baizhu: 'Baizhuer',
+  Jean: 'Qin',
   'Kaedehara Kazuha': 'Kazuha',
   'Kamisato Ayaka': 'Ayaka',
   'Kamisato Ayato': 'Ayato',
+  Kirara: 'Momoka',
   'Kujou Sara': 'Sara',
   'Kuki Shinobu': 'Shinobu',
+  Lynette: 'Linette',
+  Lyney: 'Liney',
+  Noelle: 'Noel',
+  Ororon: 'Olorun',
   'Raiden Shogun': 'Shougun',
   'Sangonomiya Kokomi': 'Kokomi',
   'Shikanoin Heizou': 'Heizo',
+  Thoma: 'Tohma',
+  Xianyun: 'Liuyun',
   'Yae Miko': 'Yae',
+  Yanfei: 'Feiyan',
   'Hu Tao': 'Hutao',
   'Yun Jin': 'Yunjin',
   'Lan Yan': 'Lanyan',
@@ -392,6 +405,7 @@ export function GenshinDashboard({ auth, onAuthChange }: GenshinDashboardProps) 
       weapon: 'All',
       rarity: character.rarity || 5,
       image: character.image || getCharacterSplashArtUrl(character.name),
+      artClass: getCharacterArtClass(character.name),
       icon: character.icon || characterIconUrls[character.name] || characterIconUrls.Unknown,
       level: character.level,
       constellation: character.constellation,
@@ -407,6 +421,7 @@ export function GenshinDashboard({ auth, onAuthChange }: GenshinDashboardProps) 
     return fallbackArchiveCharacters.map(character => ({
       ...character,
       image: accountByName.get(character.name)?.image || character.image || getCharacterSplashArtUrl(character.name),
+      artClass: getCharacterArtClass(character.name),
       icon: character.icon || accountByName.get(character.name)?.icon,
       owned: accountByName.has(character.name),
       build: undefined,
@@ -770,6 +785,7 @@ function CharacterArchive({
 function CharacterInfoMenu({ character, onClose }: { character: ArchiveCharacter; onClose: () => void }) {
   const splashArt = character.image || getCharacterSplashArtUrl(character.name)
   const portraitArt = splashArt || character.icon
+  const artClass = character.artClass || ''
   const wikiUrl = getWikiCharacterPageUrl(character.name)
   const details = [
     { label: 'Element', value: character.element },
@@ -791,7 +807,7 @@ function CharacterInfoMenu({ character, onClose }: { character: ArchiveCharacter
   return createPortal(
     <div className="character-build-overlay" role="dialog" aria-modal="true" onMouseDown={onClose}>
       <div className="character-build-panel character-build-panel-compact character-info-panel" onMouseDown={event => event.stopPropagation()}>
-        <div className={`character-build-art ${splashArt ? 'has-splash' : 'is-icon'}`}>
+        <div className={`character-build-art ${splashArt ? 'has-splash' : 'is-icon'} ${artClass}`}>
           {portraitArt && <img src={portraitArt} alt={character.name} />}
           <div className="character-build-fade" />
           <button className="character-build-close" onClick={onClose} type="button">Close</button>
@@ -849,6 +865,7 @@ function CompactCharacterBuildMenu({ character, onClose }: { character: ArchiveC
   const weapon = build?.weapon
   const splashArt = build?.image || character.image
   const portraitArt = splashArt || character.icon
+  const artClass = character.artClass || ''
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
@@ -861,7 +878,7 @@ function CompactCharacterBuildMenu({ character, onClose }: { character: ArchiveC
   return createPortal(
     <div className="character-build-overlay" role="dialog" aria-modal="true" onMouseDown={onClose}>
       <div className="character-build-panel character-build-panel-compact" onMouseDown={event => event.stopPropagation()}>
-        <div className={`character-build-art ${splashArt ? 'has-splash' : 'is-icon'}`}>
+        <div className={`character-build-art ${splashArt ? 'has-splash' : 'is-icon'} ${artClass}`}>
           {portraitArt && <img src={portraitArt} alt={character.name} />}
           <div className="character-build-fade" />
           <button className="character-build-close" onClick={onClose} type="button">Close</button>
@@ -949,11 +966,12 @@ function CharacterBuildMenu({ character, onClose }: { character: ArchiveCharacte
   const weapon = build?.weapon
   const splashArt = build?.image || character.image
   const portraitArt = splashArt || character.icon
+  const artClass = character.artClass || ''
 
   return (
     <div className="character-build-overlay" role="dialog" aria-modal="true">
       <div className="character-build-panel">
-        <div className={`character-build-art ${splashArt ? 'has-splash' : 'is-icon'}`}>
+        <div className={`character-build-art ${splashArt ? 'has-splash' : 'is-icon'} ${artClass}`}>
           {portraitArt && <img src={portraitArt} alt={character.name} />}
           <div className="character-build-fade" />
           <button className="character-build-close" onClick={onClose} type="button">Close</button>
@@ -1036,6 +1054,10 @@ function getWikiCharacterPageUrl(name: string): string {
 function getCharacterSplashArtUrl(name: string): string {
   const assetName = characterSplashAssetNames[name] || name.replace(/[^A-Za-z0-9]/g, '')
   return `https://enka.network/ui/UI_Gacha_AvatarImg_${assetName}.png`
+}
+
+function getCharacterArtClass(name: string): string {
+  return name === 'Aether' || name === 'Traveler' ? 'traveler-art' : ''
 }
 
 function inferCharacterRegion(name: string): string {
