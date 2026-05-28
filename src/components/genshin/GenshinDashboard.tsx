@@ -290,7 +290,6 @@ const fallbackArchiveCharacters: ArchiveCharacter[] = [
   { name: 'Tartaglia', element: 'Hydro', weapon: 'Bow', rarity: 5 },
   { name: 'Thoma', element: 'Pyro', weapon: 'Polearm', rarity: 4 },
   { name: 'Tighnari', element: 'Dendro', weapon: 'Bow', rarity: 5 },
-  { name: 'Traveler', element: 'None', weapon: 'Sword', rarity: 5 },
   { name: 'Varesa', element: 'Electro', weapon: 'Catalyst', rarity: 5 },
   { name: 'Varka', element: 'Anemo', weapon: 'Claymore', rarity: 5 },
   { name: 'Venti', element: 'Anemo', weapon: 'Bow', rarity: 5 },
@@ -803,7 +802,7 @@ function CharacterInfoMenu({ character, onClose }: { character: ArchiveCharacter
   return createPortal(
     <div className="character-build-overlay" role="dialog" aria-modal="true" onMouseDown={onClose}>
       <div className="character-build-panel character-build-panel-compact character-info-panel" onMouseDown={event => event.stopPropagation()}>
-        <div className={`character-build-art ${splashArt ? 'has-splash' : 'is-icon'}`}>
+        <div className={`character-build-art character-info-art ${splashArt ? 'has-splash' : 'is-icon'}`}>
           {portraitArt && <img src={portraitArt} alt={character.name} />}
           <div className="character-build-fade" />
           <button className="character-build-close" onClick={onClose} type="button">Close</button>

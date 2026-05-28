@@ -60,7 +60,13 @@ export function PopupApp() {
   function openDashboard() { chrome.tabs.create({ url: chrome.runtime.getURL('index.html') }) }
 
   const s: React.CSSProperties = {
-    fontFamily: "'Inter', sans-serif", width: 380, minHeight: 380, background: '#0c0f18',
+    fontFamily: "'Inter', sans-serif",
+    width: 380,
+    minHeight: 400,
+    maxHeight: 600,
+    overflowY: 'auto',
+    overflowX: 'hidden',
+    background: '#0c0f18',
   }
 
   const row: React.CSSProperties = {

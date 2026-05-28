@@ -26,6 +26,9 @@ function initTheme() {
 
 initTheme()
 
+document.documentElement.classList.add('teyvat-popup-root')
+document.body.classList.add('teyvat-popup-body')
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <PopupApp />

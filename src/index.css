@@ -64,6 +64,25 @@
   ::-webkit-scrollbar-thumb { background: rgba(212, 163, 90, 0.1); border-radius: 2px; }
   ::-webkit-scrollbar-thumb:hover { background: rgba(212, 163, 90, 0.2); }
   ::selection { background: rgba(212, 163, 90, 0.15); color: #f2e5cc; }
+
+  html.teyvat-popup-root,
+  html.teyvat-popup-root body.teyvat-popup-body {
+    width: 380px;
+    min-width: 380px;
+    max-width: 380px;
+    height: auto;
+    min-height: 400px;
+    max-height: 600px;
+    overflow-x: hidden;
+    overflow-y: auto;
+    background: #0c0f18;
+  }
+
+  html.teyvat-popup-root #root {
+    width: 380px;
+    min-width: 380px;
+    min-height: 400px;
+  }
 }
 
 @layer components {
@@ -1255,6 +1274,14 @@
     width: min(152%, 700px);
     height: auto;
     max-height: min(116%, calc(92dvh - 104px));
+  }
+
+  .character-info-art.has-splash img {
+    width: min(360%, 1500px);
+    max-height: none;
+    object-position: center bottom;
+    transform: translateY(10%) scale(1.85);
+    transform-origin: center bottom;
   }
 
   .character-build-fade {
