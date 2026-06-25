@@ -1277,10 +1277,10 @@
   }
 
   .character-info-art.has-splash img {
-    width: min(360%, 1500px);
+    width: min(260%, 1100px);
     max-height: none;
     object-position: center bottom;
-    transform: translateY(10%) scale(1.85);
+    transform: translateY(6%);
     transform-origin: center bottom;
   }
 
